@@ -24,7 +24,7 @@ import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.AceFileProcessor;
 import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.ReadACEAnnotation;
 import edu.illinois.cs.cogcomp.reader.commondatastructure.XMLException;
 
-import edu.illinois.cs.cogcomp.annotation.handler.IllinoisNerExtHandler;
+//import edu.illinois.cs.cogcomp.annotation.handler.IllinoisNerExtHandler;
 
 /**
  * 

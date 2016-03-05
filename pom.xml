@@ -9,7 +9,6 @@
   	<dependency>
   		<groupId>edu.illinois.cs.cogcomp</groupId>
   		<artifactId>illinois-nlp-readers</artifactId>
-  		<version>0.0.2-SNAPSHOT</version>
   	</dependency>
     <dependency>
         <groupId>edu.illinois.cs.cogcomp</groupId>
@@ -22,4 +21,13 @@
     	<version>2.8.8</version>
     </dependency>
   </dependencies>
+  <dependencyManagement>
+  	<dependencies>
+  		<dependency>
+  			<groupId>edu.illinois.cs.cogcomp</groupId>
+  			<artifactId>illinois-nlp-readers</artifactId>
+  			<version>0.0.2-SNAPSHOT</version>
+  		</dependency>
+  	</dependencies>
+  </dependencyManagement>
 </project>
