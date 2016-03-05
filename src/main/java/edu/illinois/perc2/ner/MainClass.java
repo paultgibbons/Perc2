@@ -24,6 +24,8 @@ import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.AceFileProcessor;
 import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.ReadACEAnnotation;
 import edu.illinois.cs.cogcomp.reader.commondatastructure.XMLException;
 
+import edu.illinois.cs.cogcomp.annotation.handler.IllinoisNerExtHandler;
+
 /**
  * 
  * @author ptgibbo2
@@ -140,6 +142,9 @@ public class MainClass {
 		// String docDirOutput = "data/practice/ACE05_English/";
 
 		// modifiedAnnotateAllDocument(afp, docDirInput, docDirOutput);
+		
+		
+		
 		System.out.println("hello world");
 
 	}
