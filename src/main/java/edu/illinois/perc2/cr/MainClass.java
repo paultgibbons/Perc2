@@ -1,30 +1,24 @@
-package edu.illinois.perc2.ner;
-
-//import static edu.illinois.cs.cogcomp.reader.ace2005.documentReader.ReadACEDocuments.annotateAllDocument;
+package edu.illinois.perc2.cr;
 
 import java.io.File;
 import java.util.List;
-
-
-
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.HashSet;
-
 
 import edu.illinois.cs.cogcomp.core.datastructures.textannotation.TextAnnotation;
 import edu.illinois.cs.cogcomp.nlp.tokenizer.IllinoisTokenizer;
 import edu.illinois.cs.cogcomp.nlp.utility.CcgTextAnnotationBuilder;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocumentAnnotation;
-import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
 import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.AceFileProcessor;
 import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.ReadACEAnnotation;
 import edu.illinois.cs.cogcomp.reader.commondatastructure.XMLException;
+import edu.illinois.cs.cogcomp.annotation.handler.*;
 
-//import edu.illinois.cs.cogcomp.annotation.handler.IllinoisNerExtHandler;
+//import edu.illinois.cs.cogcomp.sl.core.*;
 
 /**
  * 
@@ -131,22 +125,18 @@ public class MainClass {
 	}
 	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
+		boolean testing = false;
 
 		AceFileProcessor afp = new AceFileProcessor(new CcgTextAnnotationBuilder( new IllinoisTokenizer() ));
-		
 		ACEDocument doc = afp.processAceEntry(new File(TEST_DIR), TEST_DIR + "/" + TEST_FILE);
-		List< TextAnnotation > taList = AceFileProcessor.populateTextAnnotation(doc);
 		
-	    // String docDirInput = "data/train/ACE05_English/nw";
-		// String docDirOutput = "data/practice/ACE05_English/";
-
-		// modifiedAnnotateAllDocument(afp, docDirInput, docDirOutput);
-		
-		
-		
-		System.out.println("hello world");
-
+		if (testing) {
+			CRMainClass.testCRModel(doc, "models/CRModel1");
+		} else {
+			CRMainClass.crMain(doc);
+			System.out.println("done training");
+		}
 	}
 
 }
