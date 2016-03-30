@@ -44,20 +44,26 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 	
 	@Override
 	public IFeatureVector getFeatureVector(IInstance x, IStructure y) {
-		
-		
+		Output o = (Output) y;
 		Input ins = (Input) x;
-		//boolean match = ((Output) y).areCoReferencing;
+		float fmatch = (float) ((ins.type1.equals(ins.type2)) ? 1.0 : -1.0);
+		float yval = o.areCoReferencing?1.0f:-1.0f;
 		
-		// add emission features
-		float fmatch = (float) ((ins.type1.equals(ins.type2)) ? 1.0 : 0.0);
-//		fv.addFeature(0,fmatch);
-//		fv.addFeature(1,(float) ins.distance)
-		;
-		SparseFeatureVector fv = new SparseFeatureVector(new int[]{0,1}, new float[]{fmatch,(float) ins.distance});
-
-//		fv.addFeature(new int[]{0,1})
-		return fv; 		
+		FeatureVectorBuffer fvb = new FeatureVectorBuffer();
+		
+		if (o.areCoReferencing) {
+			fvb.addFeature(0,fmatch);
+			fvb.addFeature(1,0.0f);
+			fvb.addFeature(2,ins.distance);
+			fvb.addFeature(3,0.0f);
+		} else {
+			fvb.addFeature(0,0.0f);
+			fvb.addFeature(1,fmatch);
+			fvb.addFeature(2,0.0f);
+			fvb.addFeature(3,ins.distance);
+		}
+		
+		return fvb.toFeatureVector(false);
 	}
 
 }

@@ -23,6 +23,7 @@ import edu.illinois.cs.cogcomp.sl.core.IInstance;
 import edu.illinois.cs.cogcomp.sl.core.IStructure;
 import edu.illinois.cs.cogcomp.sl.util.FeatureVectorBuffer;
 import edu.illinois.cs.cogcomp.sl.util.IFeatureVector;
+import edu.illinois.cs.cogcomp.sl.util.Lexiconer;
 import edu.illinois.cs.cogcomp.sl.util.SparseFeatureVector;
 
 public class FeatureGenerator extends AbstractFeatureGenerator {
@@ -36,28 +37,26 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 	 * @return Feature Vector \Phi(x,y), where x is the input instance and y is the
 	 *         output structure
 	 */
+	
+	Lexiconer lm;
    
-	public FeatureGenerator() {		
-
+	public FeatureGenerator(Lexiconer lm) {		
+		this.lm = lm;
 	}
 
 	
 	@Override
 	public IFeatureVector getFeatureVector(IInstance x, IStructure y) {
-		
-		
+		FeatureVectorBuffer fv = new FeatureVectorBuffer();
 		Input ins = (Input) x;
-		//boolean match = ((Output) y).areCoReferencing;
+		int tag = ((Output) y).relationType;
 		
-		// add emission features
-		float fmatch = (float) ((ins.type1.equals(ins.type2)) ? 1.0 : 0.0);
-//		fv.addFeature(0,fmatch);
-//		fv.addFeature(1,(float) ins.distance)
-		;
-		SparseFeatureVector fv = new SparseFeatureVector(new int[]{0,1}, new float[]{fmatch,(float) ins.distance});
+		// add type and distance features
+		fv.addFeature(0, ins.type1);
+		fv.addFeature(1, ins.type2);
+		fv.addFeature(2, ins.distance);
 
-//		fv.addFeature(new int[]{0,1})
-		return fv; 		
+		return fv.toFeatureVector(); 		
 	}
 
 }

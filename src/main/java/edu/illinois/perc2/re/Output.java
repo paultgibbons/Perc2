@@ -25,16 +25,16 @@ import edu.illinois.cs.cogcomp.sl.core.IStructure;
  */
 
 public class Output implements IStructure {
-	public final String relationType;
+	public final int relationType;
 	
-	public Output(String rt){
+	public Output(int rt){
 		this.relationType = rt;
 	}
 	
 	@Override
 	public boolean equals(Object aThat) {
 		if (aThat instanceof Output) {
-			return this.relationType.equals(((Output) aThat).relationType);
+			return this.relationType == (((Output) aThat).relationType);
 		} else {
 			return false;
 		}

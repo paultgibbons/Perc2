@@ -42,27 +42,27 @@ import edu.illinois.cs.cogcomp.sl.util.WeightVector;
 
 public class REMainClass {
 
-	public static void crMain(ACEDocument doc) throws Exception {
+	public static void reMain(List<ACEDocument> docs) throws Exception {
 			String configFilePath = "config/CR.config";
-			String modelPath = "models/CRmodel1";
+			String modelPath = "models/REmodel1";
 			
 			SLModel model = new SLModel();
 			model.lm = new Lexiconer();
 
-			SLProblem sp = readStructuredData(doc);
+			SLProblem sp = readStructuredData(docs, model.lm);
 
 			// Disallow the creation of new features
 			model.lm.setAllowNewFeatures(false);
 
 			// initialize the inference solver
-			model.infSolver = new InferenceSolver();
+			model.infSolver = new InferenceSolver(model.lm);
 
-			FeatureGenerator fg = new FeatureGenerator();
+			FeatureGenerator fg = new FeatureGenerator(model.lm);
 			SLParameters para = new SLParameters();
 			para.loadConfigFile(configFilePath);
-			//para.TOTAL_NUMBER_FEATURE = model.lm.getNumOfFeature()
-			//		* model.lm.getNumOfLabels() + model.lm.getNumOfLabels()
-			//		+ model.lm.getNumOfLabels() * model.lm.getNumOfLabels();
+			para.TOTAL_NUMBER_FEATURE = model.lm.getNumOfFeature()
+					* model.lm.getNumOfLabels() + model.lm.getNumOfLabels()
+					+ model.lm.getNumOfLabels() * model.lm.getNumOfLabels();
 			
 			// numLabels*numLabels for transition features
 			// numWordsInVocab*numLabels for emission features
@@ -79,9 +79,9 @@ public class REMainClass {
 		
 	}
 	
-	public static void testCRModel(ACEDocument doc, String modelPath) throws Exception {
+	public static void testREModel(List<ACEDocument> docs, String modelPath) throws Exception {
 		SLModel model = SLModel.loadModel(modelPath);
-		SLProblem sp = readStructuredData(doc);
+		SLProblem sp = readStructuredData(docs, model.lm);
 
 		double acc = 0.0;
 		double total = 0.0;
@@ -95,19 +95,20 @@ public class REMainClass {
 			if (gold.relationType == prediction.relationType) {
 				acc += 1.0;
 			}
-			if (prediction.relationType.equals("NONE")) {
+			if (prediction.relationType == model.lm.getFeatureId("l:unknownlabel")) {
 				falses += 1;
 			}
 			total += 1.0;
 		}
+		System.out.println("falses:" +falses+ ", total:" +total);
 		System.out.println("Acc = " + acc / total);
 	}
 
-	public static SLProblem readStructuredData(ACEDocument doc)
+	public static SLProblem readStructuredData(List<ACEDocument> docs, Lexiconer lm)
 			throws IOException, DataFormatException {
 		SLProblem sp = new SLProblem();
 
-		
+		for(ACEDocument doc : docs) {
 		List<?> entity_list = doc.aceAnnotation.entityList;
 		int entity_size = entity_list.size();
 		
@@ -125,6 +126,11 @@ public class REMainClass {
 		
 		List<?> relation_list = doc.aceAnnotation.relationList;
 		
+		if (lm.isAllowNewFeatures()) {
+	        lm.addFeature("W:unknownword");
+	        lm.addFeature("l:unknownlabel");
+		}
+		
 		// for each pair of entities
 		for (int i = 0; i < entity_size; i++) {
 			for (int j = i+1; j < entity_size; j++) {
@@ -137,19 +143,32 @@ public class REMainClass {
 				String type1 = e1.type;
 				String type2 = e2.type;
 				
+				if (lm.isAllowNewFeatures()) {
+				    lm.addFeature("w:" + type1);
+				    lm.addFeature("w:" + type2);
+				}
+				
+				int type1i = (lm.containFeature("w:" + type1)) ? lm.getFeatureId("w:"+type1) : lm.getFeatureId("W:unknownword");
+				int type2i = (lm.containFeature("w:" + type2)) ? lm.getFeatureId("w:"+type2) : lm.getFeatureId("W:unknownword");
+				
 				int distance1 = Math.abs(start_map.get(id1) - start_map.get(id2));
 				int distance2 = Math.abs(start_map.get(id2) - start_map.get(id1));
 				int distance = Math.min(distance1, distance2);
 				
-				Input x = new Input(type1, type2, distance);
+				Input x = new Input(type1i, type2i, distance);
 				// if there is a relation, add that type as output
 				// else add null/none as output
 				String relation_type = getRelationType(id1, id2, relation_list);
+				if (lm.isAllowNewFeatures()) {
+				    lm.addFeature("l:" + relation_type);
+				}
 				
-				sp.addExample(x, new Output(relation_type));
+				int relation_typei = (lm.containFeature("l:" + relation_type)) ? lm.getFeatureId("") : lm.getFeatureId("W:unknownword");
+				
+				sp.addExample(x, new Output(relation_typei));
 			}
 		}
-
+		}
 		return sp;
 	}
 

@@ -20,6 +20,7 @@ package edu.illinois.perc2.re;
 import edu.illinois.cs.cogcomp.sl.core.AbstractInferenceSolver;
 import edu.illinois.cs.cogcomp.sl.core.IInstance;
 import edu.illinois.cs.cogcomp.sl.core.IStructure;
+import edu.illinois.cs.cogcomp.sl.util.Lexiconer;
 import edu.illinois.cs.cogcomp.sl.util.WeightVector;
 
 /**
@@ -30,8 +31,11 @@ public class InferenceSolver extends
 		AbstractInferenceSolver {
 
 	private static final long serialVersionUID = 1L;	
-
-	public InferenceSolver() {}
+	protected Lexiconer lm = null;
+	
+	public InferenceSolver(Lexiconer lm) {
+		this.lm = lm;
+	}
 	
 	@Override
 	public IStructure getLossAugmentedBestStructure(
@@ -40,18 +44,23 @@ public class InferenceSolver extends
 		//Output goldLabeledSeq = (Output) gold;
 		Input pair = (Input) input;
 		
+		float bestScore = Integer.MIN_VALUE;
+		for(int i = 0; i < lm.getNumOfLabels(); i++) {
+			float score = wv.get(i);
+		}
+		
 		//if (wv.dotProduct(pair.))
 		
 		if (wv.get(0) == 0.0) {
 			// types do not match
-			return new Output(false);
+			return new Output(lm.getFeatureId("NONE"));
 		}
 		if (wv.get(1) > 50.0) {
 			// if words are too far apart
-			return new Output(true);
+			return new Output(lm.getFeatureId("NONE"));
 		}
 		
-		return new Output(true);
+		return new Output(lm.getFeatureId("NONE"));
 
 	}
 	
@@ -59,7 +68,7 @@ public class InferenceSolver extends
 	public float getLoss(IInstance ins, IStructure goldStructure,  IStructure structure){
 		Output goldLabeledSeq = (Output) goldStructure;
 		Output predictedLabeledSeq = (Output) structure;
-		if (goldLabeledSeq.areCoReferencing == predictedLabeledSeq.areCoReferencing) {
+		if (goldLabeledSeq.relationType == (predictedLabeledSeq.relationType)) {
 			return 0;
 		} else {
 			return 1;
@@ -74,6 +83,6 @@ public class InferenceSolver extends
 
 	@Override
 	public Object clone(){
-		return new InferenceSolver();
+		return new InferenceSolver(lm);
 	}
 }

@@ -26,12 +26,12 @@ import edu.illinois.cs.cogcomp.sl.core.IInstance;
  */
 public class Input implements IInstance {
 	// input is two entities types and their distances
-	public final String type1;
-	public final String type2;
+	public final int type1;
+	public final int type2;
 	public final int distance;
 	int hashCode = 0;
 	
-	public Input(String type1, String type2, int distance) {
+	public Input(int type1, int type2, int distance) {
         this.type1 = type1;
         this.type2 = type2;
         this.distance = distance;

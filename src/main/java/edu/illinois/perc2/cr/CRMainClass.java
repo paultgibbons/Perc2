@@ -39,14 +39,14 @@ import edu.illinois.cs.cogcomp.sl.util.WeightVector;
 
 public class CRMainClass {
 
-	public static void crMain(ACEDocument doc) throws Exception {
+	public static void crMain(List<ACEDocument> docs) throws Exception {
 			String configFilePath = "config/CR.config";
 			String modelPath = "models/CRmodel1";
 			
 			SLModel model = new SLModel();
 			model.lm = new Lexiconer();
 
-			SLProblem sp = readStructuredData(doc);
+			SLProblem sp = readStructuredData(docs);
 
 			// Disallow the creation of new features
 			model.lm.setAllowNewFeatures(false);
@@ -76,9 +76,9 @@ public class CRMainClass {
 		
 	}
 	
-	public static void testCRModel(ACEDocument doc, String modelPath) throws Exception {
+	public static void testCRModel(List<ACEDocument> docs, String modelPath) throws Exception {
 		SLModel model = SLModel.loadModel(modelPath);
-		SLProblem sp = readStructuredData(doc);
+		SLProblem sp = readStructuredData(docs);
 
 		double acc = 0.0;
 		double total = 0.0;
@@ -97,10 +97,11 @@ public class CRMainClass {
 			}
 			total += 1.0;
 		}
+		System.out.println("falses:" +falses+ ", total:" +total);
 		System.out.println("Acc = " + acc / total);
 	}
 
-	public static SLProblem readStructuredData(ACEDocument doc)
+	public static SLProblem readStructuredData(List<ACEDocument> docs)
 			throws IOException, DataFormatException {
 		SLProblem sp = new SLProblem();
 
@@ -108,6 +109,10 @@ public class CRMainClass {
 		//if (lm.isAllowNewFeatures())
 		//	lm.addFeature("w:unknownword");
 		
+		int docErrorCount = 0;
+		int docCount = 0;
+		for(ACEDocument doc: docs) {
+		try{
 		List<?> entity_list = doc.aceAnnotation.entityList;
 		int entity_size = entity_list.size();
 		
@@ -155,7 +160,14 @@ public class CRMainClass {
 				sp.addExample(x, new Output(match));
 			}
 		}
-
+		} catch (Exception e) {
+			docErrorCount++;
+		} finally {
+			docCount++;
+		}
+		}
+		System.out.println("doc Error Count:"+docErrorCount);
+		System.out.println("doc Count:" + docCount);
 		return sp;
 	}
 }

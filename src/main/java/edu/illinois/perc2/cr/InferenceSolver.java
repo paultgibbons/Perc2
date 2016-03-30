@@ -20,6 +20,8 @@ package edu.illinois.perc2.cr;
 import edu.illinois.cs.cogcomp.sl.core.AbstractInferenceSolver;
 import edu.illinois.cs.cogcomp.sl.core.IInstance;
 import edu.illinois.cs.cogcomp.sl.core.IStructure;
+import edu.illinois.cs.cogcomp.sl.util.IFeatureVector;
+import edu.illinois.cs.cogcomp.sl.util.SparseFeatureVector;
 import edu.illinois.cs.cogcomp.sl.util.WeightVector;
 
 /**
@@ -37,22 +39,15 @@ public class InferenceSolver extends
 	public IStructure getLossAugmentedBestStructure(
 			WeightVector wv, IInstance input, IStructure gold)
 			throws Exception {
-		//Output goldLabeledSeq = (Output) gold;
-		Input pair = (Input) input;
 		
-		//if (wv.dotProduct(pair.))
+		IFeatureVector fvt = (new FeatureGenerator()).getFeatureVector(input,new Output(true));
+		IFeatureVector fvf = (new FeatureGenerator()).getFeatureVector(input,new Output(false));
 		
-		if (wv.get(0) == 0.0) {
-			// types do not match
+		if (wv.dotProduct(fvt) > wv.dotProduct(fvf)) {
+			return new Output(true);
+		} else {
 			return new Output(false);
 		}
-		if (wv.get(1) > 50.0) {
-			// if words are too far apart
-			return new Output(true);
-		}
-		
-		return new Output(true);
-
 	}
 	
 	@Override
