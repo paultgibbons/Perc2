@@ -30,15 +30,26 @@ public class Input implements IInstance {
 	public final String arg2id;
 	public final String type1;
 	public final String type2;
+	public final String head1;
+	public final String head2;
+	public final String extent1;
+	public final String extent2;
+	public final Boolean isSubstr;
 	public final int distance;
 	int hashCode = 0;
 	
-	public Input(String id1, String id2, String type1, String type2, int distance) {
+	public Input(String id1, String id2, String type1, String type2, int distance, String head1, String head2, String extent1, String extent2, Boolean isSubstr) {
         this.arg1id = id1;
         this.arg2id = id2;
         this.type1 = type1;
         this.type2 = type2;
         this.distance = distance;
+        this.head1 = head1;
+        this.head2 = head2;
+        this.extent1 = extent1;
+        this.extent2 = extent2;
+        this.isSubstr = isSubstr;
+        
         //hashCode = ... 
 	}
 
@@ -56,6 +67,17 @@ public class Input implements IInstance {
 		sb.append(type2);
 		sb.append(' ');
 		sb.append(distance);	
+		sb.append(' ');
+		sb.append(head1);
+		sb.append(' ');
+		sb.append(head2);
+		sb.append(' ');
+		sb.append(extent1);
+		sb.append(' ');
+		sb.append(extent2);
+		sb.append(' ');
+		sb.append(isSubstr);
+		
 
 		return sb.toString();
 	} 

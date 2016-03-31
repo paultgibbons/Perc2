@@ -83,6 +83,12 @@ public class CRMainClass {
 		double acc = 0.0;
 		double total = 0.0;
 		int falses = 0;
+		int fp = 0;
+		int tp = 0;
+		int fn = 0;
+		int tn = 0;
+		
+		
 		for (int i = 0; i < sp.instanceList.size(); i++) {
 
 			Output gold = (Output) sp.goldStructureList.get(i);
@@ -91,14 +97,28 @@ public class CRMainClass {
 
 			if (gold.areCoReferencing == prediction.areCoReferencing) {
 				acc += 1.0;
+				if (prediction.areCoReferencing) {
+					tp += 1;
+				} else {
+					tn += 1;
+				}
+			} else {
+				if (prediction.areCoReferencing) {
+					fp += 1;
+				} else {
+					fn += 1;
+				}	
 			}
+			
 			if (!prediction.areCoReferencing) {
 				falses += 1;
-			}
+			} 
 			total += 1.0;
 		}
 		System.out.println("falses:" +falses+ ", total:" +total);
 		System.out.println("Acc = " + acc / total);
+		System.out.println("Precision: " + ((float) tp)/(tp + fp));
+		System.out.println("Recall: " + ((float) tp)/(tp + fn));
 	}
 
 	public static SLProblem readStructuredData(List<ACEDocument> docs)
@@ -111,63 +131,84 @@ public class CRMainClass {
 		
 		int docErrorCount = 0;
 		int docCount = 0;
+		
+		int max_mention_distance = 7584;
+		
 		for(ACEDocument doc: docs) {
-		try{
-		List<?> entity_list = doc.aceAnnotation.entityList;
-		int entity_size = entity_list.size();
-		
-		List<ACEEntityMention> entity_mention_list= new ArrayList<ACEEntityMention>();
-		List<String> parallel_type_list = new ArrayList<String>();
-		List<String> parallel_entity_list = new ArrayList<String>();
+			try{
+			List<?> entity_list = doc.aceAnnotation.entityList;
+			int entity_size = entity_list.size();
+			
+			List<ACEEntityMention> entity_mention_list= new ArrayList<ACEEntityMention>();
+			List<String> parallel_type_list = new ArrayList<String>();
+			List<String> parallel_entity_list = new ArrayList<String>();
+	
+			for (int i = 0; i < entity_size; i++) {
+				ACEEntity current = (ACEEntity) entity_list.get(i);
+				
+				for (int j = 0; j < current.entityMentionList.size(); j++ ) {
+					ACEEntityMention current_entity_mention = current.entityMentionList.get(j);
 
-		for (int i = 0; i < entity_size; i++) {
-			ACEEntity current = (ACEEntity) entity_list.get(i);
-			for (int j = 0; j < current.entityMentionList.size(); j++ ) {
-				entity_mention_list.add(current.entityMentionList.get(j) );
-				parallel_type_list.add(current.type);
-				parallel_entity_list.add(current.id);
+					entity_mention_list.add(current_entity_mention);
+					parallel_type_list.add(current.type);
+					parallel_entity_list.add(current.id);
+				}
+				
 			}
-		}
-		
-		int entity_mention_size = entity_mention_list.size();
-		
-		for (int i = 0; i < entity_mention_size; i++) {
-			for (int j = i+1; j < entity_mention_size; j++) {
-				//make entity pair into input format - input is two entity ids, types, and their distance from each other
-				ACEEntityMention first = entity_mention_list.get(i);
-				ACEEntityMention second = entity_mention_list.get(j);
-				
-				String id1 = first.id;
-				String id2 = second.id;
-				
-				String type1 = parallel_type_list.get(i);
-				String type2 = parallel_type_list.get(j);
-				
-				int distance1 = Math.abs(first.headEnd - second.headStart);
-				int distance2 = Math.abs(first.headStart - second.headEnd);
-				int distance = Math.min(distance1, distance2);
-				
-				boolean match = ((parallel_entity_list.get(i)).equals(parallel_entity_list.get(j))); 
-				
-				Input x = new Input(id1, id2, type1, type2, distance);
-				
-				// add tags to lm - may need to use this to make integer ids?
-				
-				// create output - output for relations:
-				//   is really just the two ids, a boolean yes or no, and a type if the boolean is yes
-				// currently just need a boolean yes or no, do the coreference
-				// add example
-				sp.addExample(x, new Output(match));
+			
+			int entity_mention_size = entity_mention_list.size();
+			
+			for (int i = 0; i < entity_mention_size; i++) {
+				for (int j = i+1; j < entity_mention_size; j++) {
+					//make entity pair into input format - input is two entity ids, types, and their distance from each other
+					ACEEntityMention first = entity_mention_list.get(i);
+					ACEEntityMention second = entity_mention_list.get(j);
+					
+					String id1 = first.id;
+					String id2 = second.id;
+					
+					String type1 = parallel_type_list.get(i);
+					String type2 = parallel_type_list.get(j);
+					
+					int distance1 = Math.abs(first.headEnd - second.headStart);
+					int distance2 = Math.abs(first.headStart - second.headEnd);
+					int distance = Math.min(distance1, distance2);
+					
+					String head1 = first.head;
+					String head2 = second.head;
+					
+					String extent1 = first.extent;
+					String extent2 = second.extent;
+					
+					String prevHead = first.extentStart < second.extentStart ? first.head : second.head;
+					String secondHead = first.extentStart >= second.extentStart ? first.head : second.head;
+					
+					Boolean substr = false;
+					if (prevHead.toLowerCase().contains(secondHead.toLowerCase()) ) {
+						substr = true;
+					}
+					boolean match = ((parallel_entity_list.get(i)).equals(parallel_entity_list.get(j))); 
+					
+					Input x = new Input(id1, id2, type1, type2, distance, head1, head2, extent1, extent2, substr);
+					
+					// add tags to lm - may need to use this to make integer ids?
+					
+					// create output - output for relations:
+					//   is really just the two ids, a boolean yes or no, and a type if the boolean is yes
+					// currently just need a boolean yes or no, do the coreference
+					// add example
+					sp.addExample(x, new Output(match));
+				}
 			}
-		}
-		} catch (Exception e) {
-			docErrorCount++;
-		} finally {
-			docCount++;
-		}
+			} catch (Exception e) {
+				docErrorCount++;
+			} finally {
+				docCount++;
+			}
 		}
 		System.out.println("doc Error Count:"+docErrorCount);
 		System.out.println("doc Count:" + docCount);
+		System.out.println("max Mention Distance:" + maxValue);
 		return sp;
 	}
 }

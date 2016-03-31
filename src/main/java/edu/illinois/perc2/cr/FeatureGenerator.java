@@ -47,6 +47,9 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 		Output o = (Output) y;
 		Input ins = (Input) x;
 		float fmatch = (float) ((ins.type1.equals(ins.type2)) ? 1.0 : -1.0);
+		float hmatch = (float) ((ins.head1.equals(ins.head2)) ? 1.0 : -1.0);
+		float exmatch = (float) ((ins.extent1.equals(ins.extent2)) ? 1.0 : -1.0);
+		float isSubstr = ins.isSubstr?1.0f:-1.0f;
 		float yval = o.areCoReferencing?1.0f:-1.0f;
 		
 		FeatureVectorBuffer fvb = new FeatureVectorBuffer();
@@ -56,11 +59,24 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 			fvb.addFeature(1,0.0f);
 			fvb.addFeature(2,ins.distance);
 			fvb.addFeature(3,0.0f);
+			fvb.addFeature(4,hmatch);
+			fvb.addFeature(5,0.0f);
+			fvb.addFeature(6,exmatch);
+			fvb.addFeature(7,0.0f);
+			fvb.addFeature(8,isSubstr);
+			fvb.addFeature(9,0.0f);
+			
 		} else {
 			fvb.addFeature(0,0.0f);
 			fvb.addFeature(1,fmatch);
 			fvb.addFeature(2,0.0f);
 			fvb.addFeature(3,ins.distance);
+			fvb.addFeature(4,0.0f);
+			fvb.addFeature(5,hmatch);
+			fvb.addFeature(6,0.0f);
+			fvb.addFeature(7,exmatch);
+			fvb.addFeature(8,0.0f);
+			fvb.addFeature(9,isSubstr);
 		}
 		
 		return fvb.toFeatureVector(false);
