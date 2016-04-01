@@ -57,7 +57,8 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 		if (o.areCoReferencing) {
 			fvb.addFeature(0,fmatch);
 			fvb.addFeature(1,0.0f);
-			fvb.addFeature(2,ins.distance);
+//			fvb.addFeature(2,ins.distance); // FIXME: removed distance feature
+			fvb.addFeature(2,0.0f); 		// FIXME
 			fvb.addFeature(3,0.0f);
 			fvb.addFeature(4,hmatch);
 			fvb.addFeature(5,0.0f);
@@ -69,8 +70,9 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 		} else {
 			fvb.addFeature(0,0.0f);
 			fvb.addFeature(1,fmatch);
-			fvb.addFeature(2,0.0f);
-			fvb.addFeature(3,ins.distance);
+			fvb.addFeature(2,0.0f); 	
+//			fvb.addFeature(3,ins.distance); // FIXME: removed distance feature
+			fvb.addFeature(3,0.0f);			// FIXME
 			fvb.addFeature(4,0.0f);
 			fvb.addFeature(5,hmatch);
 			fvb.addFeature(6,0.0f);

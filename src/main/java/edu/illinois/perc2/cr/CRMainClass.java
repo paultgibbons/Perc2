@@ -115,10 +115,15 @@ public class CRMainClass {
 			} 
 			total += 1.0;
 		}
+		
+		double precision =  ((float) tp)/(tp + fp);
+		double recall = ((float) tp)/(tp + fn);
+		double f1 = 2 * (precision * recall) / (precision + recall);
 		System.out.println("falses:" +falses+ ", total:" +total);
 		System.out.println("Acc = " + acc / total);
-		System.out.println("Precision: " + ((float) tp)/(tp + fp));
-		System.out.println("Recall: " + ((float) tp)/(tp + fn));
+		System.out.println("Precision: " + precision);
+		System.out.println("Recall: " + recall);
+		System.out.println("F1:" + f1);
 	}
 
 	public static SLProblem readStructuredData(List<ACEDocument> docs)
@@ -208,7 +213,7 @@ public class CRMainClass {
 		}
 		System.out.println("doc Error Count:"+docErrorCount);
 		System.out.println("doc Count:" + docCount);
-		System.out.println("max Mention Distance:" + maxValue);
+//		System.out.println("max Mention Distance:" + maxValue);
 		return sp;
 	}
 }
