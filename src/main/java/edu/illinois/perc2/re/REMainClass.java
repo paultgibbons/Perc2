@@ -43,7 +43,7 @@ import edu.illinois.cs.cogcomp.sl.util.WeightVector;
 public class REMainClass {
 
 	public static void reMain(List<ACEDocument> docs) throws Exception {
-			String configFilePath = "config/CR.config";
+			String configFilePath = "config/RE.config";
 			String modelPath = "models/REmodel1";
 			
 			SLModel model = new SLModel();
