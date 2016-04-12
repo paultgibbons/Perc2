@@ -26,9 +26,18 @@ import edu.illinois.cs.cogcomp.sl.core.IStructure;
 
 public class Output implements IStructure {
 	public final boolean areCoReferencing;
+	public final double trueScore;
+	public String mention1id;
+	public String mention2id;
 	
 	public Output(boolean acr){
 		this.areCoReferencing = acr;
+		this.trueScore = 0;
+	}
+	
+	public Output(boolean acr, double ts) {
+		this.areCoReferencing = acr;
+		this.trueScore = ts;
 	}
 	
 	@Override

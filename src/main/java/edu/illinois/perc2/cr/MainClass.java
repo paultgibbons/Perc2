@@ -89,7 +89,7 @@ public class MainClass {
 	
 	public static void main(String[] args) throws Exception {
 		boolean training = true;
-
+		System.out.println("running corefernece resolution");
 		AceFileProcessor afp = new AceFileProcessor(new CcgTextAnnotationBuilder( new IllinoisTokenizer() ));
 		
 //		List<ACEDocument> docs = readFolder(afp, TEST_DIR);

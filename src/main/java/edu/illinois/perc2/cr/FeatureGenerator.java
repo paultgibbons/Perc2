@@ -57,29 +57,24 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 		if (o.areCoReferencing) {
 			fvb.addFeature(0,fmatch);
 			fvb.addFeature(1,0.0f);
-//			fvb.addFeature(2,ins.distance); // FIXME: removed distance feature
-			fvb.addFeature(2,0.0f); 		// FIXME
+			fvb.addFeature(2,hmatch);
 			fvb.addFeature(3,0.0f);
-			fvb.addFeature(4,hmatch);
+			fvb.addFeature(4,exmatch);
 			fvb.addFeature(5,0.0f);
-			fvb.addFeature(6,exmatch);
+			fvb.addFeature(6,isSubstr);
 			fvb.addFeature(7,0.0f);
-			fvb.addFeature(8,isSubstr);
-			fvb.addFeature(9,0.0f);
 			
 		} else {
 			fvb.addFeature(0,0.0f);
 			fvb.addFeature(1,fmatch);
-			fvb.addFeature(2,0.0f); 	
-//			fvb.addFeature(3,ins.distance); // FIXME: removed distance feature
-			fvb.addFeature(3,0.0f);			// FIXME
+			fvb.addFeature(2,0.0f);
+			fvb.addFeature(3,hmatch);
 			fvb.addFeature(4,0.0f);
-			fvb.addFeature(5,hmatch);
+			fvb.addFeature(5,exmatch);
 			fvb.addFeature(6,0.0f);
-			fvb.addFeature(7,exmatch);
-			fvb.addFeature(8,0.0f);
-			fvb.addFeature(9,isSubstr);
+			fvb.addFeature(7,isSubstr);
 		}
+		fvb.addFeature(8, 1.0f); // bias term
 		
 		return fvb.toFeatureVector(false);
 	}

@@ -43,11 +43,14 @@ public class InferenceSolver extends
 		IFeatureVector fvt = (new FeatureGenerator()).getFeatureVector(input,new Output(true));
 		IFeatureVector fvf = (new FeatureGenerator()).getFeatureVector(input,new Output(false));
 		
-		if (wv.dotProduct(fvt) > wv.dotProduct(fvf)) {
-			return new Output(true);
-		} else {
-			return new Output(false);
-		}
+		float trueScore = wv.dotProduct(fvt);
+		float falseScore = wv.dotProduct(fvf);
+		boolean acr = trueScore > falseScore;
+		double truthValue = ((Math.exp(trueScore))/(Math.exp(trueScore) + (Math.exp(falseScore))));
+		Output o = new Output(acr, truthValue);
+		o.mention1id = ((Input) input).arg1id;
+		o.mention2id = ((Input) input).arg2id;
+		return o;
 	}
 	
 	@Override
