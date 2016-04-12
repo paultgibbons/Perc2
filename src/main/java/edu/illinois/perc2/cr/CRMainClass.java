@@ -19,8 +19,10 @@ package edu.illinois.perc2.cr;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.DataFormatException;
 
@@ -82,13 +84,14 @@ public class CRMainClass {
 		SLModel model = SLModel.loadModel(modelPath);
 		List<List<SLProblem>> spll = new ArrayList<List<SLProblem>>();
 		List<List<String>> parallel_mention_ids = new ArrayList<List<String>>();
+		Map<String, Integer> entity_size_map = new HashMap<String, Integer>();
 		for(ACEDocument doc: docs) {
 			List<String> parallel_mention_id = new ArrayList<String>();
-			spll.add(readStructuredDataTest(doc, parallel_mention_id));
+			spll.add(readStructuredDataTest(doc, parallel_mention_id, entity_size_map));
 			parallel_mention_ids.add(parallel_mention_id);
 		}
 		
-
+		/*
 		double acc = 0.0;
 		double total = 0.0;
 		int falses = 0;
@@ -96,13 +99,15 @@ public class CRMainClass {
 		int tp = 0;
 		int fn = 0;
 		int tn = 0;
+		*/
 		
+		List<Set<Set<String>>> all_clusters = new ArrayList<Set<Set<String>>>();
 		
 		for (int i = 0; i < spll.size(); i++) {
 			// for each document
 			List<SLProblem> splist = spll.get(i);
 			List<String> mention_list = parallel_mention_ids.get(i);
-			List<Set<String>> clusters = new ArrayList<Set<String>>(); 
+			Set<Set<String>> clusters = new HashSet<Set<String>>(); 
 			for (int k = 0; k < splist.size(); k++) {
 				// for each mention
 				SLProblem sp = splist.get(k);
@@ -132,8 +137,10 @@ public class CRMainClass {
 					}
 				}
 			}
-			System.out.println(clusters.toString());
+			all_clusters.add(clusters);
 		}
+		
+		evaluate(all_clusters, entity_size_map);
 		
 		
 		/*
@@ -163,7 +170,8 @@ public class CRMainClass {
 			} 
 			total += 1.0;
 		}*/
-		
+		return;
+		/*
 		double precision =  ((float) tp)/(tp + fp);
 		double recall = ((float) tp)/(tp + fn);
 		double f1 = 2 * (precision * recall) / (precision + recall);
@@ -171,7 +179,54 @@ public class CRMainClass {
 		System.out.println("Acc = " + acc / total);
 		System.out.println("Precision: " + precision);
 		System.out.println("Recall: " + recall);
-		System.out.println("F1:" + f1);
+		System.out.println("F1:" + f1);*/
+	}
+
+	private static void evaluate(List<Set<Set<String>>> all_clusters, Map<String, Integer> entity_size_map) {
+		int total = 0;
+		double presum = 0.0;
+		double resum = 0.0;
+		
+		for ( Set<Set<String>> clusters : all_clusters ) {
+			// for each document
+			for ( Set<String> cluster : clusters ) {
+				// for each cluster in the document
+				for ( String mention : cluster ) {
+					// for each mention in the cluster
+					double numerator = 1.0;
+					String[] parts = mention.split("-");
+					for ( String second_mention : cluster ) {
+						if (mention.equals(second_mention)) {
+							continue;
+						} else {
+							String[] second_parts = second_mention.split("-");
+							if (second_parts[second_parts.length - 1].equals(parts[parts.length-1])) {
+								numerator += 1.0;
+							}
+						}
+					}
+					presum += numerator / cluster.size();
+					
+					StringBuilder builder = new StringBuilder();
+					for(int i = 0; i < parts.length-1; i++) {
+					    builder.append(parts[i]);
+					    if (i < parts.length - 2) {
+					    	builder.append('-');
+					    }
+					}
+					String entity_id = builder.toString();
+					resum += numerator / (entity_size_map.get(entity_id));
+					total++;
+				}
+			}
+		}
+		double precision = (presum/total);
+		System.out.println("Precision: " + precision);
+		double recall= (resum/total);
+		System.out.println("Recall: " + recall);
+		double f1 = 2 * (precision * recall) / (precision + recall);
+		System.out.println("F1: " + f1);
+		
 	}
 
 	public static SLProblem readStructuredData(List<ACEDocument> docs)
@@ -232,7 +287,8 @@ public class CRMainClass {
 		return sp;
 	}
 
-	public static List<SLProblem> readStructuredDataTest(ACEDocument doc, List<String> mention_id_list) {
+	public static List<SLProblem> readStructuredDataTest(
+			ACEDocument doc, List<String> mention_id_list, Map<String, Integer> entity_size_map) {
 		List<SLProblem> splist = new ArrayList<SLProblem>();
 		
 		List<?> entity_list = doc.aceAnnotation.entityList;
@@ -244,6 +300,7 @@ public class CRMainClass {
 
 		for (int i = 0; i < entity_size; i++) {
 			ACEEntity current = (ACEEntity) entity_list.get(i);
+			entity_size_map.put(current.id, current.entityMentionList.size());
 			
 			for (int j = 0; j < current.entityMentionList.size(); j++ ) {
 				ACEEntityMention current_entity_mention = current.entityMentionList.get(j);
