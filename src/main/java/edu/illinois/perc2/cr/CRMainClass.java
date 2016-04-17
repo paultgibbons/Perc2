@@ -19,6 +19,8 @@ package edu.illinois.perc2.cr;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -207,6 +209,52 @@ public class CRMainClass {
 		System.out.println("F1: " + f1);
 		
 	}
+	
+	private static class EntityOrderer {
+		public ACEEntityMention m;
+		public String ptl;
+		public String pel;
+		
+		// I started getting tired at this point
+		public static Object[] sort(List<ACEEntityMention> mentions, List<String> parallel_type_list,
+				List<String> parallel_entity_list) {
+			List<EntityOrderer> f = factory(mentions, parallel_type_list, parallel_entity_list);
+			mentions = new ArrayList<ACEEntityMention>();
+			parallel_type_list = new ArrayList<String>();
+			parallel_entity_list = new ArrayList<String>();
+			for (int i = 0; i < f.size(); i++) {
+				EntityOrderer e = f.get(i);
+				mentions.add(e.m);
+				parallel_type_list.add(e.ptl);
+				parallel_entity_list.add(e.pel);
+			}
+			return new Object[]{mentions, parallel_type_list, parallel_entity_list};
+		}
+
+		private static class Comp implements Comparator<EntityOrderer> {
+
+			public int compare(EntityOrderer o1, EntityOrderer o2) {
+				return o1.m.headStart < o2.m.headStart ? -1 : 1;
+			}
+			
+		}
+		
+		private static List<EntityOrderer> factory(List<ACEEntityMention> mentions, List<String> parallel_type_list,
+				List<String> parallel_entity_list) {
+			List<EntityOrderer> eo = new ArrayList<EntityOrderer>();
+			for (int i = 0; i < mentions.size(); i++) {
+				eo.add(new EntityOrderer(mentions.get(i), parallel_type_list.get(i), parallel_entity_list.get(i)));
+			}
+			Collections.sort(eo, new Comp());
+			return eo;
+		}
+		
+		private EntityOrderer(ACEEntityMention mention, String ptl, String pel) {
+			this.m = mention;
+			this.ptl = ptl;
+			this.pel = pel;
+		}
+	}
 
 	public static SLProblem readStructuredData(List<ACEDocument> docs)
 			throws IOException, DataFormatException {
@@ -218,6 +266,8 @@ public class CRMainClass {
 		
 		int docErrorCount = 0;
 		int docCount = 0;
+		
+		
 		
 		for(ACEDocument doc: docs) {
 			try{
@@ -241,13 +291,19 @@ public class CRMainClass {
 				
 			}
 			
+			Object[] oa = EntityOrderer.sort(entity_mention_list, parallel_type_list, parallel_entity_list);
+			
+			entity_mention_list = (List<ACEEntityMention>) oa[0];
+			parallel_type_list = (List<String>) oa[1];
+			parallel_entity_list = (List<String>) oa[2];
+			
 			int entity_mention_size = entity_mention_list.size();
 			
 			for (int i = 0; i < entity_mention_size; i++) {
-				for (int j = i+1; j < entity_mention_size; j++) {
+				for (int j = 0; j < i; j++) {
 					//make entity pair into input format - input is two entity ids, types, and their distance from each other
-					ACEEntityMention first = entity_mention_list.get(i);
-					ACEEntityMention second = entity_mention_list.get(j);
+					ACEEntityMention first = entity_mention_list.get(j);
+					ACEEntityMention second = entity_mention_list.get(i);
 
 					boolean match = ((parallel_entity_list.get(i)).equals(parallel_entity_list.get(j))); 
 					
@@ -291,7 +347,14 @@ public class CRMainClass {
 			
 		}
 		
+		Object[] oa = EntityOrderer.sort(entity_mention_list, parallel_type_list, parallel_entity_list);
+		
+		entity_mention_list = (List<ACEEntityMention>) oa[0];
+		parallel_type_list = (List<String>) oa[1];
+		parallel_entity_list = (List<String>) oa[2];
+		
 		int entity_mention_size = entity_mention_list.size();
+		
 		
 		for (int i = 0; i < entity_mention_size; i++) {
 			SLProblem sp = new SLProblem();
