@@ -101,26 +101,33 @@ public class CRMainClass {
 		int tn = 0;
 		*/
 		
-		List<Set<Set<String>>> all_clusters = new ArrayList<Set<Set<String>>>();
+		List<List<Set<String>>> all_clusters = new ArrayList<List<Set<String>>>();
 		
 		for (int i = 0; i < spll.size(); i++) {
 			// for each document
 			List<SLProblem> splist = spll.get(i);
 			List<String> mention_list = parallel_mention_ids.get(i);
-			Set<Set<String>> clusters = new HashSet<Set<String>>(); 
+			List<Set<String>> clusters = new ArrayList<Set<String>>();
 			for (int k = 0; k < splist.size(); k++) {
 				// for each mention
+				double[] scores = new double[clusters.size()];
+				int[] counts = new int[clusters.size()];
 				SLProblem sp = splist.get(k);
 				String current_mention = mention_list.get(k);
 				double best_score = Double.NEGATIVE_INFINITY;
-				String best_mention = null;
+				int best_cluster_index = -1;
 				for (int j = 0; j < sp.instanceList.size(); j++) {
 					Output prediction = (Output) model.infSolver.getBestStructure(
 							model.wv, sp.instanceList.get(j));
-					if ((prediction.trueScore) > best_score) {
-						best_score = prediction.trueScore;
-						best_mention = prediction.mention1id;
-						assert prediction.mention2id.equals(current_mention);
+					int index = getAssociatedIndex(clusters,prediction.mention1id);
+					scores[index] += prediction.trueScore;
+					counts[index] += 1;
+				}
+				for (int j = 0; j < clusters.size(); j++) {
+					double average = getAverage(scores[j], counts[j]);
+					if (average > best_score) {
+						best_score = average;
+						best_cluster_index = j;
 					}
 				}
 				// add mention id to correct cluster
@@ -129,65 +136,37 @@ public class CRMainClass {
 					h.add(current_mention);
 					clusters.add(h);
 				} else {
-					for (Set<String> cluster : clusters) {
-						if (cluster.contains(best_mention)) {
-							cluster.add(current_mention);
-							break;
-						}
-					}
+					clusters.get(best_cluster_index).add(current_mention);
 				}
 			}
 			all_clusters.add(clusters);
 		}
 		
 		evaluate(all_clusters, entity_size_map);
-		
-		
-		/*
-		for (int i = 0; i < sp.instanceList.size(); i++) {
-
-			Output gold = (Output) sp.goldStructureList.get(i);
-			Output prediction = (Output) model.infSolver.getBestStructure(
-					model.wv, sp.instanceList.get(i));
-
-			if (gold.areCoReferencing == prediction.areCoReferencing) {
-				acc += 1.0;
-				if (prediction.areCoReferencing) {
-					tp += 1;
-				} else {
-					tn += 1;
-				}
-			} else {
-				if (prediction.areCoReferencing) {
-					fp += 1;
-				} else {
-					fn += 1;
-				}	
-			}
-			
-			if (!prediction.areCoReferencing) {
-				falses += 1;
-			} 
-			total += 1.0;
-		}*/
 		return;
-		/*
-		double precision =  ((float) tp)/(tp + fp);
-		double recall = ((float) tp)/(tp + fn);
-		double f1 = 2 * (precision * recall) / (precision + recall);
-		System.out.println("falses:" +falses+ ", total:" +total);
-		System.out.println("Acc = " + acc / total);
-		System.out.println("Precision: " + precision);
-		System.out.println("Recall: " + recall);
-		System.out.println("F1:" + f1);*/
+
 	}
 
-	private static void evaluate(List<Set<Set<String>>> all_clusters, Map<String, Integer> entity_size_map) {
+	private static int getAssociatedIndex(List<Set<String>> clusters,
+			String mention1id) {
+		for(int i = 0; i < clusters.size(); i++) {
+			if (clusters.get(i).contains(mention1id)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private static double getAverage(double d, int i) {
+		return (d/i);
+	}
+
+	private static void evaluate(List<List<Set<String>>> all_clusters, Map<String, Integer> entity_size_map) {
 		int total = 0;
 		double presum = 0.0;
 		double resum = 0.0;
 		
-		for ( Set<Set<String>> clusters : all_clusters ) {
+		for ( List<Set<String>> clusters : all_clusters ) {
 			// for each document
 			for ( Set<String> cluster : clusters ) {
 				// for each cluster in the document
