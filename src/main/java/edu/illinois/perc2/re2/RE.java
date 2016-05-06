@@ -19,6 +19,7 @@ package edu.illinois.perc2.re2;
 
 import java.util.List;
 
+import edu.illinois.cs.cogcomp.annotation.AnnotatorService;
 import edu.illinois.cs.cogcomp.nlp.tokenizer.IllinoisTokenizer;
 import edu.illinois.cs.cogcomp.nlp.utility.TokenizerTextAnnotationBuilder;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
@@ -37,22 +38,24 @@ public class RE {
 	public static void main(String[] args) throws Exception {
 		boolean training = true;
 
-		AceFileProcessor afp = new AceFileProcessor(new TokenizerTextAnnotationBuilder( new IllinoisTokenizer() ));
-		List<ACEDocument> docs  = MultiClassIOManager.readAll(afp);
-		List<ACEDocument> train = MultiClassIOManager.trainDocs(docs);
-		List<ACEDocument> test  = MultiClassIOManager.testDocs(docs);
+		AceFileProcessor afp = new AceFileProcessor(new TokenizerTextAnnotationBuilder(new IllinoisTokenizer()));
+		MultiClassIOManager.readCorpus(afp);
+		List<ACEDocument> train = MultiClassIOManager.getTrainingDocuments();
+		List<ACEDocument> test  = MultiClassIOManager.getTestDocuments();
+		
+		AnnotatorService annotator = REUtils.initializeAnnotator();
 		
 		if (training) {
-			RE.train(train);
+			RE.train(train, annotator);
 			System.out.println("Done training.");
 			
 		} else {
 			System.out.println("Using pretrained model.");
 		}
-		RE.testREModel(test, "models/REModel1");
+		RE.testREModel(test, annotator, "models/REModel1");
 	}
 	
-	public static void train(List<ACEDocument> docs) throws Exception {
+	public static void train(List<ACEDocument> docs, AnnotatorService annotator) throws Exception {
 			String configFilePath = "config/CR.config";
 			String modelPath 	  = "models/REmodel1";
 			
@@ -60,7 +63,7 @@ public class RE {
 			model.lm      = new Lexiconer();
 
 			model.lm.setAllowNewFeatures(true);
-			SLProblem sp = MultiClassIOManager.readStructuredData(docs, model.lm);
+			SLProblem sp = MultiClassIOManager.readStructuredData(docs, model.lm, annotator);
 
 			// Disallow the creation of new features
 			model.lm.setAllowNewFeatures(false);
@@ -90,11 +93,11 @@ public class RE {
 		
 	}
 	
-	public static void testREModel(List<ACEDocument> docs, String modelPath) throws Exception {
+	public static void testREModel(List<ACEDocument> docs, AnnotatorService annotator, String modelPath) throws Exception {
 		SLModel model = SLModel.loadModel(modelPath);
 		model.lm.setAllowNewFeatures(false);
-
-		SLProblem sp  = MultiClassIOManager.readStructuredData(docs, model.lm);
+		
+		SLProblem sp  = MultiClassIOManager.readStructuredData(docs, model.lm, annotator);
 		
 		for (int i = 0; i < model.lm.getNumOfLabels(); i++) {
 			System.out.println("Label "+i+": "+model.lm.getLabelString(i));
