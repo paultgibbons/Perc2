@@ -17,6 +17,7 @@
  *******************************************************************************/
 package edu.illinois.perc2.re2;
 
+import java.util.HashMap;
 import java.util.List;
 
 import edu.illinois.cs.cogcomp.annotation.AnnotatorService;
@@ -121,17 +122,26 @@ public class RE {
 		double acc   = 0.0, nacc   = 0.0;
 		double total = 0.0, ntotal = 0.0;
 		int falses = 0;
+		
+		HashMap<String, HashMap<String, Integer>> confusion_mtx = new HashMap<String, HashMap<String, Integer>>();
 
 		for (int i = 0; i < sp.instanceList.size(); i++) {
-			MultiClassInstance ri         = (MultiClassInstance) sp.instanceList.get(i);
-			MultiClassLabel    gold       = (MultiClassLabel) sp.goldStructureList.get(i);
-			MultiClassLabel    prediction = (MultiClassLabel) model.infSolver.getBestStructure(model.wv, ri);
+			MultiClassInstance ri   = (MultiClassInstance) sp.instanceList.get(i);
+			MultiClassLabel    gold = (MultiClassLabel) sp.goldStructureList.get(i);
+			MultiClassLabel    pred = (MultiClassLabel) model.infSolver.getBestStructure(model.wv, ri);
+			
+			String gold_label = model.lm.getLabelString(gold.output);
+			String pred_label = model.lm.getLabelString(pred.output);
+			
+			if (!confusion_mtx.containsKey(gold_label)) confusion_mtx.put(gold_label, new HashMap<String, Integer>());
+			if (!confusion_mtx.get(gold_label).containsKey(pred_label)) confusion_mtx.get(gold_label).put(pred_label, 0);
+			confusion_mtx.get(gold_label).put(pred_label, confusion_mtx.get(gold_label).get(pred_label)+1);
 
-			if (gold.output == prediction.output) {
+			if (gold.output == pred.output) {
 				acc += 1.0;
 				if (gold.output != model.lm.getLabelId(Features.REL+"NONE")) nacc += 1.0;
 			}
-			if (prediction.output == model.lm.getLabelId(Features.REL+"NONE")) {
+			if (pred.output == model.lm.getLabelId(Features.REL+"NONE")) {
 				falses += 1;
 			}
 			total += 1.0;
@@ -140,5 +150,15 @@ public class RE {
 		System.out.println("\nNONE predictions: " +falses+ ", total: " +total);
 		System.out.println("Accuracy: " + acc / total);
 		System.out.println("Accuracy on non-NONE labels: " + nacc/ntotal);
+		System.out.println();
+		
+		for (String g : confusion_mtx.keySet()) {
+			HashMap<String, Integer> m = confusion_mtx.get(g);
+			System.out.println("GOLD: "+g);
+			for (String p : m.keySet()) {
+				System.out.println("\tPRED: "+p+"\t"+m.get(p));
+			}
+			System.out.println();
+		}
 	}
 }

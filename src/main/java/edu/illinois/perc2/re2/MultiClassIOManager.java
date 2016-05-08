@@ -200,7 +200,7 @@ public class MultiClassIOManager {
 		System.out.println("Done! Cost matrix: ");
 		for (int i = 0; i < res.length; i++) {
 			for (int j = 0; j < res[i].length; j++) {
-				System.out.print(res[i][j]+" ");
+				System.out.print(String.format("%1$-5.2f\t",res[i][j]));
 			}
 			System.out.println();
 		}
