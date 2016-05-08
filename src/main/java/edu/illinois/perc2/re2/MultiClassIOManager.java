@@ -21,54 +21,84 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.Scanner;
 
 import edu.illinois.cs.cogcomp.annotation.AnnotatorService;
-import edu.illinois.cs.cogcomp.core.datastructures.ViewNames;
-import edu.illinois.cs.cogcomp.core.datastructures.textannotation.Sentence;
-import edu.illinois.cs.cogcomp.core.datastructures.textannotation.TextAnnotation;
-import edu.illinois.cs.cogcomp.core.datastructures.textannotation.TokenLabelView;
 import edu.illinois.cs.cogcomp.core.io.LineIO;
-import edu.illinois.cs.cogcomp.core.utilities.configuration.Configurator;
-import edu.illinois.cs.cogcomp.core.utilities.configuration.ResourceManager;
-import edu.illinois.cs.cogcomp.nlp.common.PipelineConfigurator;
-import edu.illinois.cs.cogcomp.nlp.pipeline.IllinoisPipelineFactory;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
-import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntity;
-import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntityMention;
 import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.AceFileProcessor;
 import edu.illinois.cs.cogcomp.sl.core.SLProblem;
 import edu.illinois.cs.cogcomp.sl.util.Lexiconer;
 
 public class MultiClassIOManager {
 	
-	private static final String BASE_DIR="data/train/ACE05_English/";
+	private static final String BASE_DIR="data/train/ACE05_English/";   // base directory for train/test files
+	private static final String TRAINING="data/all/training_files.txt"; // file of training filenames
     
-    public static List<ACEDocument> train;
-    public static List<ACEDocument> test;
+    public static List<ACEDocument> train;				// training documents
+    public static List<ACEDocument> test;				// test documents
+    public static List<String> 		training_filenames; // filenames of training documents (from Piazza)
     
+    /**
+     * Accessor method for training documents.
+     * @return list of training documents
+     */
     public static List<ACEDocument> getTrainingDocuments()  { return train; }
+    
+    /**
+     * Accessor methods for test documents.
+     * @return list of test documents
+     */
     public static List<ACEDocument> getTestDocuments()		{ return test; 	}
     
+    /**
+     * Reads a corpus using the BASE_DIR directory path and TRAINING file list specified in MultiClassIOManager.
+     * Initializes training and test document lists.
+     * @param afp AceFileProcessor object to be used
+     */
 	public static void readCorpus(AceFileProcessor afp) {
-		train = new ArrayList<ACEDocument>();
-		test  = new ArrayList<ACEDocument>();
+		train = new ArrayList<ACEDocument>(); // initialize list of training documents
+		test  = new ArrayList<ACEDocument>(); // initialize list of test documents
 		
-//		for(String dir : new String[]{"bc","bn","cts","nw","un","wl"}) {
+		// read in the list of training filenames to be used
+		readTrainingFilenames(TRAINING);
+		
+		// read in files in bn, nw directories and add them to train/test splits as specified in training filename list
 		for(String dir : new String[]{"bn","nw"}) {
 			String folder = BASE_DIR + dir;
-			readFolder(afp,folder);
+			readFolderAndAddToSplits(afp,folder);
 		}
 	}
 	
-	public static void readFolder (AceFileProcessor afp, String inputFolderStr) {
+	/**
+	 * Reads in a list of training filenames that specify which files to add to the training split.
+	 * @param fileName Filename of list of training filenames
+	 */
+	public static void readTrainingFilenames(String fileName) {
+		training_filenames = new ArrayList<String>(); // initialize list of training filenames
+		
+		// add filenames to list of training filenames
+		Path file = Paths.get(fileName);
+		try {
+			Scanner scanner = new Scanner(file);
+			while (scanner.hasNext()) training_filenames.add(scanner.nextLine().trim());
+			scanner.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Reads in files from a directory and adds relevant training documents to the appropriate lists
+	 * according to train/test splits.
+	 * @param afp AceFileProcessor object to be used
+	 * @param inputFolderStr Directory path of files to be read
+	 */
+	public static void readFolderAndAddToSplits (AceFileProcessor afp, String inputFolderStr) {
 		File inputFolder = new File (inputFolderStr);
 		FilenameFilter filter = new FilenameFilter() {
 			public boolean accept(File directory, String fileName) {
@@ -77,9 +107,6 @@ public class MultiClassIOManager {
 		};
 		
 		File[] fileList = inputFolder.listFiles(filter);
-		Arrays.sort(fileList);
-		
-		List<ACEDocument> docs = new ArrayList<ACEDocument>(); 
 		
 		PrintStream out = System.out;
     	PrintStream err = System.err;
@@ -92,6 +119,7 @@ public class MultiClassIOManager {
 		for (int fileID = 0; fileID < fileList.length; ++fileID) {
 
             String annotationFile = fileList[fileID].getAbsolutePath();
+            String fileName       = fileList[fileID].getName();
             
             try{
             	System.setOut(devnull);
@@ -99,7 +127,8 @@ public class MultiClassIOManager {
             	ACEDocument doc = afp.processAceEntry(new File(inputFolderStr), annotationFile);
             	System.setOut(out);
             	System.setErr(err);
-            	docs.add(doc);
+            	if (training_filenames.contains(fileName)) train.add(doc); // add to training split
+            	else test.add(doc);										   // add to test split
             } catch (Exception e) {
             	System.setOut(out);
             	System.setErr(err);
@@ -107,15 +136,22 @@ public class MultiClassIOManager {
             	System.err.println(e.toString());
             }
 		}
-
-		for (int i = 0; i < (int) (docs.size() * 0.2); i++) 			  test.add(docs.get(i));
-		for (int i = (int) (docs.size() * 0.2) + 1; i < docs.size(); i++) train.add(docs.get(i));
 	}
 
-	public static float[][] getCostMatrix(Map<String, Integer> labelMapping,String fname) throws Exception{
-		int numLabels = labelMapping.size();
-		
+	/**
+	 * Reads in a cost matrix from an input filename and initializes 2D float cost matrix.
+	 * Uses the Lexiconer to find integer indices corresponding to the labels in the cost matrix file.
+	 * @param lm Lexiconer to be used
+	 * @param fname Cost matrix filename
+	 * @return 2D float cost matrix
+	 * @throws Exception If file fname cannot be read
+	 */
+	public static float[][] getCostMatrix(Lexiconer lm, String fname) throws Exception{
+		System.out.println("Reading cost matrix: "+fname);
+		int numLabels = lm.getNumOfLabels();
 		float[][] res = new float[numLabels][numLabels];
+		
+		// initialize cost matrix
 		for(int i=0;i  < numLabels ;i ++){
 			for(int j=0; j < numLabels; j ++){
 				if (i==j)
@@ -124,24 +160,27 @@ public class MultiClassIOManager {
 					res[i][j] = 1.0f;
 			}
 		}
+		
 		ArrayList<String> lines = LineIO.read(fname);
 		
 		for(String line : lines){
-			
-			if (line.trim().charAt(0) == '#')
+			if (line.trim().charAt(0) == '#') // ignore comments
 				continue;
+			
+			// check for incorrect formatting
 			String[] tokens = line.split("\\s+");
 			if (tokens.length != 3)
 				throw new Exception("Format error in the cost matrix file.");
-			if (!labelMapping.containsKey(tokens[0]))
+			if (!lm.containsLabel(tokens[0]))
 				throw new Exception("Format error in the cost matrix file. Label (" + tokens[0] +") does not exist!"); 
-			if (!labelMapping.containsKey(tokens[1]))
+			if (!lm.containsLabel(tokens[1]))
 				throw new Exception("Format error in the cost matrix file. Label (" + tokens[1] +") does not exist!");
 						
-			int i = labelMapping.get(tokens[0]);
-			int j = labelMapping.get(tokens[1]);
+			int i = lm.getLabelId(tokens[0]); // gold label
+			int j = lm.getLabelId(tokens[1]); // predicted label
 			float cost = -1;
 			
+			// check for incorrect formatting of cost value
 			try{
 				cost = Float.parseFloat(tokens[2]);				
 			} catch(NumberFormatException e){
@@ -153,97 +192,37 @@ public class MultiClassIOManager {
 			
 			if (cost < 0)
 				throw new Exception("The cost cannot be negative.");
+			
+			// set cost
 			res[i][j] = cost;
 		}		
-		System.out.println("Done!");
+		
+		System.out.println("Done! Cost matrix: ");
+		for (int i = 0; i < res.length; i++) {
+			for (int j = 0; j < res[i].length; j++) {
+				System.out.print(res[i][j]+" ");
+			}
+			System.out.println();
+		}
+		System.out.println();
+		
 		return res;
 	}
 	
+	/**
+	 * Reads structured data from a given list of documents. Adds features to a given Lexiconer (if training)
+	 * and creates instances added to the SLProblem (using feature vector representation).
+	 * @param docs List of documents to be read
+	 * @param lm Lexiconer object to be used
+	 * @param annotator Initialized annotator service to be used
+	 * @return Initialized SLProblem with training instances initialized from the input documents
+	 */
 	public static SLProblem readStructuredData(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator) {
 		SLProblem sp = new SLProblem();
         
         if (lm.isAllowNewFeatures()) REUtils.addFeaturesToLexiconer(docs, lm, annotator);
-//        REUtils.createTrainingInstances(docs, lm, annotator, sp);
+        REUtils.createInstances(docs, lm, annotator, sp);
 		
 		return sp;
 	}
-	
-//	public static void addTrainingInstances(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, SLProblem sp) {
-//		for(ACEDocument doc : docs) {
-//			try{
-//				if (doc == null) continue;
-//				
-//				List<?> entities  = doc.aceAnnotation.entityList;
-//				List<?> relations = doc.aceAnnotation.relationList;
-//
-//				List<ACEEntityMention> entity_mention_list= new ArrayList<ACEEntityMention>();
-//
-//				for (int i = 0; i < entities.size(); i++) {
-//					ACEEntity current = (ACEEntity) entities.get(i);
-//
-//					for (int j = 0; j < current.entityMentionList.size(); j++ ) {
-//						ACEEntityMention current_entity_mention = current.entityMentionList.get(j);
-//						entity_mention_list.add(current_entity_mention);
-//					}	
-//				}
-//
-//				// for each pair of entities
-//				for (int i = 0; i < entity_size; i++) {
-//					for (int j = 0; j < entity_size; j++) {
-//						// get features
-//						ACEEntity e1 = ((ACEEntity) entities.get(i));
-//						ACEEntity e2 = ((ACEEntity) entities.get(j));
-//						String id1 = e1.id;
-//						String id2 = e2.id;
-//
-//						String type1 = e1.type;
-//						String type2 = e2.type;
-//
-//						ACEEntityMention first = entity_mention_list.get(i);
-//						ACEEntityMention second = entity_mention_list.get(j);
-//
-//						String mid1 = first.id;
-//						String mid2 = second.id; 
-//						
-//						String head1 = first.head;
-//						String head2 = second.head;
-//
-//						String mtype1 = first.type;
-//						String mtype2 = second.type;
-//
-//						int type1i = (lm.containFeature("t1:" + type1)) ? lm.getFeatureId("t1:"+type1) : lm.getFeatureId("t1:unknowntype");
-//						int type2i = (lm.containFeature("t2:" + type2)) ? lm.getFeatureId("t2:"+type2) : lm.getFeatureId("t2:unknowntype");
-//
-//						int head1i = (lm.containFeature("w1:" + head1)) ? lm.getFeatureId("w1:"+head1) : lm.getFeatureId("w1:unknownword");
-//						int head2i = (lm.containFeature("w2:" + head2)) ? lm.getFeatureId("w2:"+head2) : lm.getFeatureId("w2:unknownword");
-//						
-//						int mtypei = (lm.containFeature("ct:"+mtype1+mtype2)) ? lm.getFeatureId("ct:"+mtype1+mtype2) : lm.getFeatureId("ct:unknowntypecomb");
-//
-//						int distance1 = Math.abs(start_map.get(id1) - start_map.get(id2));
-//						int distance2 = Math.abs(start_map.get(id2) - start_map.get(id1));
-//						int distance = Math.min(distance1, distance2);
-//
-//
-////						Input x = new Input(type1i, type2i, head1i, head2i, mtypei, distance);
-//						// if there is a relation, add that type as output
-//						// else add null/none as output
-//						String relation_type = REUtils.getRelationType(id1, id2, mid1, mid2, relations);
-//						//				if (lm.isAllowNewFeatures()) {
-////						lm.addLabel(relation_type);
-//						//				}
-//
-//						int relation_typei = lm.getLabelId(relation_type);
-//
-////						sp.addExample(x, new Output(relation_typei));
-//					}
-//				}
-//			} catch (Exception e) {
-//				docErrorCount++;
-//			} finally {
-//				docCount++;
-//			}
-//		}
-//		System.out.println("doc Error Count:"+docErrorCount);
-//		System.out.println("doc Count:" + docCount);
-//	}
 }

@@ -43,6 +43,9 @@ public class RE {
 		List<ACEDocument> train = MultiClassIOManager.getTrainingDocuments();
 		List<ACEDocument> test  = MultiClassIOManager.getTestDocuments();
 		
+		System.out.println(train.size()+" training documents read.");
+		System.out.println(test.size()+" test documents read.");
+		
 		AnnotatorService annotator = REUtils.initializeAnnotator();
 		
 		if (training) {
@@ -52,35 +55,38 @@ public class RE {
 		} else {
 			System.out.println("Using pretrained model.");
 		}
-		RE.testREModel(test, annotator, "models/REModel1");
+		RE.test(test, annotator, "models/REModel1");
 	}
 	
+	/**
+	 * Trains a model with given list of training documents and an initialized annotator service.
+	 * @param docs List of training documents
+	 * @param annotator Initialized annotator service
+	 * @throws Exception 
+	 */
 	public static void train(List<ACEDocument> docs, AnnotatorService annotator) throws Exception {
-			String configFilePath = "config/CR.config";
+			String configFilePath = "config/RE.config";
 			String modelPath 	  = "models/REmodel1";
 			
-			SLModel model = new SLModel();
-			model.lm      = new Lexiconer();
+			MultiClassModel model = new MultiClassModel();
+			model.lm = new Lexiconer();
 
 			model.lm.setAllowNewFeatures(true);
 			SLProblem sp = MultiClassIOManager.readStructuredData(docs, model.lm, annotator);
 
 			// Disallow the creation of new features
 			model.lm.setAllowNewFeatures(false);
+			
+			// initialize cost matrix
+			model.cost_matrix = MultiClassIOManager.getCostMatrix(model.lm, "models/cost/cost_matrix.txt");
 
 			// initialize the inference solver
-			model.infSolver = new MultiClassInferenceSolver(model.lm);
+			model.infSolver = new MultiClassInferenceSolver(model.cost_matrix);
 
 			model.featureGenerator = new MultiClassFeatureGenerator();
 			SLParameters para = new SLParameters();
 			para.loadConfigFile(configFilePath);
-			para.TOTAL_NUMBER_FEATURE = model.lm.getNumOfFeature()
-					* model.lm.getNumOfLabels() + model.lm.getNumOfLabels()
-					+ model.lm.getNumOfLabels() * model.lm.getNumOfLabels();
-			
-			// numLabels*numLabels for transition features
-			// numWordsInVocab*numLabels for emission features
-			// numLabels for prior on labels
+
 			Learner learner = LearnerFactory.getLearner(model.infSolver, model.featureGenerator,
 					para);
 			model.wv = learner.train(sp);
@@ -93,38 +99,46 @@ public class RE {
 		
 	}
 	
-	public static void testREModel(List<ACEDocument> docs, AnnotatorService annotator, String modelPath) throws Exception {
-		SLModel model = SLModel.loadModel(modelPath);
+	/**
+	 * Tests a trained model read in from a given model path on a list of test documents, using an initialized
+	 * annotator service.
+	 * @param docs List of test documents
+	 * @param annotator Initialized annotator service
+	 * @param modelPath File path of the saved model
+	 * @throws Exception
+	 */
+	public static void test(List<ACEDocument> docs, AnnotatorService annotator, String modelPath) throws Exception {
+		MultiClassModel model = (MultiClassModel) SLModel.loadModel(modelPath);
 		model.lm.setAllowNewFeatures(false);
 		
 		SLProblem sp  = MultiClassIOManager.readStructuredData(docs, model.lm, annotator);
 		
+		System.out.println();
 		for (int i = 0; i < model.lm.getNumOfLabels(); i++) {
 			System.out.println("Label "+i+": "+model.lm.getLabelString(i));
 		}
 
-		double acc = 0.0, nacc = 0.0;
+		double acc   = 0.0, nacc   = 0.0;
 		double total = 0.0, ntotal = 0.0;
 		int falses = 0;
 
 		for (int i = 0; i < sp.instanceList.size(); i++) {
-
-			MultiClassLabel gold = (MultiClassLabel) sp.goldStructureList.get(i);
-			MultiClassLabel prediction = (MultiClassLabel) model.infSolver.getBestStructure(
-					model.wv, sp.instanceList.get(i));
+			MultiClassInstance ri         = (MultiClassInstance) sp.instanceList.get(i);
+			MultiClassLabel    gold       = (MultiClassLabel) sp.goldStructureList.get(i);
+			MultiClassLabel    prediction = (MultiClassLabel) model.infSolver.getBestStructure(model.wv, ri);
 
 			if (gold.output == prediction.output) {
 				acc += 1.0;
-				if (gold.output != model.lm.getLabelId("NONE")) nacc += 1.0;
+				if (gold.output != model.lm.getLabelId(Features.REL+"NONE")) nacc += 1.0;
 			}
-			if (prediction.output == model.lm.getLabelId("NONE")) {
+			if (prediction.output == model.lm.getLabelId(Features.REL+"NONE")) {
 				falses += 1;
 			}
 			total += 1.0;
-			if (gold.output != model.lm.getLabelId("NONE")) ntotal += 1.0;
+			if (gold.output != model.lm.getLabelId(Features.REL+"NONE")) ntotal += 1.0;
 		}
-		System.out.println("falses:" +falses+ ", total:" +total);
-		System.out.println("Acc = " + acc / total);
+		System.out.println("\nNONE predictions: " +falses+ ", total: " +total);
+		System.out.println("Accuracy: " + acc / total);
 		System.out.println("Accuracy on non-NONE labels: " + nacc/ntotal);
 	}
 }

@@ -2,7 +2,6 @@ package edu.illinois.perc2.re2;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -10,12 +9,8 @@ import java.util.Properties;
 import java.util.Set;
 
 import edu.illinois.cs.cogcomp.annotation.AnnotatorService;
-import edu.illinois.cs.cogcomp.core.datastructures.ViewNames;
-import edu.illinois.cs.cogcomp.core.datastructures.textannotation.Constituent;
 import edu.illinois.cs.cogcomp.core.datastructures.textannotation.Sentence;
-import edu.illinois.cs.cogcomp.core.datastructures.textannotation.SpanLabelView;
 import edu.illinois.cs.cogcomp.core.datastructures.textannotation.TextAnnotation;
-import edu.illinois.cs.cogcomp.core.datastructures.textannotation.TokenLabelView;
 import edu.illinois.cs.cogcomp.core.utilities.configuration.Configurator;
 import edu.illinois.cs.cogcomp.core.utilities.configuration.ResourceManager;
 import edu.illinois.cs.cogcomp.nlp.common.PipelineConfigurator;
@@ -24,17 +19,18 @@ import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntity;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntityMention;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACERelation;
-import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACERelationArgument;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACERelationArgumentMention;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACERelationMention;
 import edu.illinois.cs.cogcomp.sl.core.SLProblem;
+import edu.illinois.cs.cogcomp.sl.util.FeatureVectorBuffer;
+import edu.illinois.cs.cogcomp.sl.util.IFeatureVector;
 import edu.illinois.cs.cogcomp.sl.util.Lexiconer;
-import edu.illinois.cs.cogcomp.sl.util.SparseFeatureVector;
 import edu.illinois.perc2.re2.Features.FeatureEnum;
 
 public class REUtils {
 	public static FeatureEnum[] features = { FeatureEnum.HM1, FeatureEnum.HM2, FeatureEnum.HM12, FeatureEnum.WM1, 
-			FeatureEnum.WM2, FeatureEnum.ET12, FeatureEnum.ML12
+			FeatureEnum.WM2, FeatureEnum.ET12, FeatureEnum.ML12, FeatureEnum.AM2F, FeatureEnum.AM2L, FeatureEnum.BM1F,
+			FeatureEnum.BM1L, FeatureEnum.WBNULL, FeatureEnum.WBFL, FeatureEnum.WBF, FeatureEnum.WBL, FeatureEnum.WBO
 	};
 	
 	static HashMap<String,Integer> labelCounts = new HashMap<String,Integer>();
@@ -153,6 +149,8 @@ public class REUtils {
 	
 	/**
 	 * Gets the string feature of feature label+value given an ordered pair of mentions and a requested feature type.
+	 * Most features will return a size-1 list of the feature label+value for use in a one-hot feature vector initialization.
+	 * In bag-of-words feature cases, this method will return a list of such feature label+values.
 	 * @param ta TextAnnotation of the document
 	 * @param m1 First mention
 	 * @param m2 Second mention
@@ -189,6 +187,43 @@ public class REUtils {
 			return Arrays.asList(Features.ET12+m1.entity.type+" "+m2.entity.type);
 		case ML12: // combination of mention levels
 			return Arrays.asList(Features.ML12+m1.mention.type+" "+m2.mention.type);
+		case BM1F: // first word before M1
+			if (m1es-1 < 0) return Arrays.asList(Features.BM1F+Features.NULL);
+			return Arrays.asList(Features.BM1F+ta.getToken(m1es-1));
+		case BM1L:
+			if (m1es-2 < 0) return Arrays.asList(Features.BM1L+Features.NULL);
+			return Arrays.asList(Features.BM1L+ta.getToken(m1es-2));
+		case AM2F:
+			if (m2ee+1 > ta.size()-1) return Arrays.asList(Features.AM2F+Features.NULL);
+			return Arrays.asList(Features.AM2F+ta.getToken(m2ee+1));
+		case AM2L:
+			if (m2ee+2 > ta.size()-1) return Arrays.asList(Features.AM2L+Features.NULL);
+			return Arrays.asList(Features.AM2L+ta.getToken(m2ee+2));
+		case WBNULL:
+			if (m1ee+1 == m2es || m2ee+1 == m1es) return Arrays.asList(Features.WBNULL+Features.TRUE);
+			return Arrays.asList(Features.WBNULL+Features.FALSE);
+		case WBFL:
+			if (m1ee+2 == m2es) return Arrays.asList(Features.WBFL+ta.getToken(m1ee+1));
+			if (m2ee+2 == m1es) return Arrays.asList(Features.WBFL+ta.getToken(m2ee+1));
+			return Arrays.asList(Features.WBFL+Features.NULL);
+		case WBF:
+			if (m1ee+3 <= m2es) return Arrays.asList(Features.WBF+ta.getToken(m1ee+1));
+			if (m2ee+3 <= m1es) return Arrays.asList(Features.WBF+ta.getToken(m2ee+1));
+			return Arrays.asList(Features.WBF+Features.NULL);
+		case WBL:
+			if (m1ee+3 <= m2es) return Arrays.asList(Features.WBL+ta.getToken(m2es-1));
+			if (m2ee+3 <= m1es) return Arrays.asList(Features.WBL+ta.getToken(m1es-1));
+			return Arrays.asList(Features.WBL+Features.NULL);
+		case WBO:
+			if (m1ee+4 <= m2es) {
+				for (String s : ta.getTokensInSpan(m1ee+2,m2es-1)) values.add(Features.WBO+s);
+				return values;
+			}
+			if (m2ee+4 <= m1es) {
+				for (String s : ta.getTokensInSpan(m2ee+2,m1es-1)) values.add(Features.WBO+s);
+				return values;
+			}
+			return Arrays.asList(Features.WBO+Features.NULL);
 		default:   // unimplemented
 			System.err.println("Unimplemented feature id:"+feature.name());
 			return null;
@@ -204,6 +239,80 @@ public class REUtils {
 		return Features.getFeatureString(feature)+Features.UNK;
 	}
 	
+	public static void addNullFeature(Lexiconer lm, FeatureEnum feature) {
+		if (feature == FeatureEnum.BM1F || feature == FeatureEnum.BM1L || feature == FeatureEnum.AM2F || feature == FeatureEnum.AM2L)
+			lm.addFeature(Features.getFeatureString(feature)+Features.NULL);
+	}
+	
+	/**
+	 * Adds computed feature values for a given pair of mentions to an id-value representation for use in constructing
+	 * a sparse feature vector.
+	 * @param ta TextAnnotation to be used
+	 * @param lm Initialized Lexiconer for use in indexing
+	 * @param idxList Running ID list for sparse feature vector representation
+	 * @param valList Running value list for sparse feature vector representation
+	 * @param feature Feature to compute
+	 * @param m1 First mention
+	 * @param m2 Second mention
+	 */
+	public static void addFeatureToSparseVector(TextAnnotation ta, Lexiconer lm, List<Integer> idxList, List<Double> valList, FeatureEnum feature, Mention m1, Mention m2) {
+		List<String> feature_values = getFeature(ta, m1, m2, feature); // get feature values
+		
+		// replace unseen feature-value pairs with UNK values
+		for (int i = 0; i < feature_values.size(); i++) {
+			if (!lm.containFeature(feature_values.get(i))) feature_values.set(i, getUNKFeature(feature));
+		}
+		
+		switch (feature) {
+		// one-hot features
+		case HM1:
+		case HM2:
+		case HM12:
+		case ET12:
+		case ML12:
+		case BM1F:
+		case BM1L:
+		case AM2F:
+		case AM2L:
+		case WBNULL:
+		case WBFL:
+		case WBF:
+		case WBL:
+			for (String fv : feature_values) {
+				idxList.add(lm.getFeatureId(fv));
+				valList.add(1.0);
+			}
+			return;
+			
+		// bag-of-words features
+		case WM1:
+		case WM2:
+		case WBO:
+			List<Integer> tempidx = new ArrayList<Integer>();
+			List<Double>  tempval = new ArrayList<Double>();
+			
+			for (String fv : feature_values) {
+				int id = lm.getFeatureId(fv);
+				
+				if (!tempidx.contains(id)) {
+					tempidx.add(id);
+					tempval.add(0.0);
+				}
+				
+				int idx = tempidx.indexOf(id);
+				tempval.set(idx, tempval.get(idx)+1.0);
+			}
+			
+			idxList.addAll(tempidx);
+			valList.addAll(tempval);
+			return;
+			
+		default:
+			System.err.println("Unimplemented feature id:"+feature.name());
+			return;
+		}
+	}
+
 	/**
 	 * Traverses through given list of (training) documents and adds all instances of feature label+values into the
 	 * given Lexiconer.
@@ -215,44 +324,37 @@ public class REUtils {
 		if (lm.isAllowNewFeatures()) {
 			
 			// add UNK tokens for all features
-			for (FeatureEnum feature : features) lm.addFeature(getUNKFeature(feature));
+			for (FeatureEnum feature : features) {
+				lm.addFeature(getUNKFeature(feature));
+				addNullFeature(lm, feature);
+			}
 			
 			int totalRel = 0, nonNONERel = 0;
 			
 			for(ACEDocument doc : docs) {
 				try{
 					if (doc == null) continue;
-					TextAnnotation ta = annotator.createBasicTextAnnotation("","",doc.contentRemovingTags);
-//					annotator.addView(ta, ViewNames.POS);
-//					System.out.println(ta.getAvailableViews());
-//					TokenLabelView posView = (TokenLabelView) ta.getView(ViewNames.POS);
-//					for (int i = 0; i < ta.size(); i++) System.out.println(i+": "+posView.getLabel(i));
-					
-					annotator.addView(ta,  ViewNames.SHALLOW_PARSE);
-					SpanLabelView v = (SpanLabelView) ta.getView(ViewNames.SHALLOW_PARSE);
-					for (Constituent c : v.getConstituents()) {
-						System.out.println(c+": "+c.getLabel());
-					}
+					TextAnnotation ta = annotator.createBasicTextAnnotation("","",doc.contentRemovingTags); // create the TextAnnotation
 							
-					List<?> entities  = doc.aceAnnotation.entityList;
-					List<?> relations = doc.aceAnnotation.relationList;
+					List<?> entities  = doc.aceAnnotation.entityList;	  // entities
+					List<?> relations = doc.aceAnnotation.relationList;	  // relations
 
 					// for each pair of entities
 					for (int i = 0; i < entities.size(); i++) {
 						for (int j = 0; j < entities.size(); j++) {
 							// entities
-							ACEEntity e1 = ((ACEEntity) entities.get(i));
-							ACEEntity e2 = ((ACEEntity) entities.get(j));
+							ACEEntity e1 = ((ACEEntity) entities.get(i)); // first entity
+							ACEEntity e2 = ((ACEEntity) entities.get(j)); // second entity
 
-							List<ACEEntityMention> e1m = e1.entityMentionList;
-							List<ACEEntityMention> e2m = e2.entityMentionList;
+							List<ACEEntityMention> e1m = e1.entityMentionList; // mention list of first entity
+							List<ACEEntityMention> e2m = e2.entityMentionList; // mention list of second entity
 							
-							// mention pairs
+							// for each combination of mention pairs
 							for (ACEEntityMention am1 : e1m) {
 								for (ACEEntityMention am2 : e2m) {
 									
-									Mention m1 = new Mention(e1, am1, ta);
-									Mention m2 = new Mention(e2, am2, ta);
+									Mention m1 = new Mention(e1, am1, ta); // first mention
+									Mention m2 = new Mention(e2, am2, ta); // second mention
 									
 									// add features and label if mention pair occurs within the same sentence(s)
 									if (mentionsInSameSentence(ta,m1,m2)) {										
@@ -287,48 +389,65 @@ public class REUtils {
 			for (String k : labelCounts.keySet()) {
 				System.out.println("\t"+k+": "+labelCounts.get(k)+"\t"+labelCounts.get(k)/((double) totalRel)+"\t"+1/(labelCounts.get(k)/((double) totalRel)));
 			}
+			System.out.println();
 		}
 	}
 
-	public static void createTrainingInstances(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, SLProblem sp) {
+	/**
+	 * Traverses through given list of documents and initializes instances of feature vectors with associated output label
+	 * (using indices provided by the given Lexiconer), adding them to the given SLProblem.
+	 * @param docs Documents to be read
+	 * @param lm Initialized Lexiconer to be used
+	 * @param annotator Initialized annotator service to be used
+	 * @param sp SLProblem to add instances to
+	 */
+	public static void createInstances(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, SLProblem sp) {
 		for(ACEDocument doc : docs) {
 			try{
 				if (doc == null) continue;
-				TextAnnotation ta = annotator.createBasicTextAnnotation("","",doc.contentRemovingTags);
-//				annotator.addView(ta, ViewNames.POS);
-//				System.out.println(ta.getAvailableViews());
-//				TokenLabelView posView = (TokenLabelView) ta.getView(ViewNames.POS);
-//				for (int i = 0; i < ta.size(); i++) System.out.println(i+": "+posView.getLabel(i));
+				TextAnnotation ta = annotator.createBasicTextAnnotation("","",doc.contentRemovingTags); // create the TextAnnotation
 
-				List<?> entities  = doc.aceAnnotation.entityList;
-				List<?> relations = doc.aceAnnotation.relationList;
+				List<?> entities  = doc.aceAnnotation.entityList;	// entities
+				List<?> relations = doc.aceAnnotation.relationList; // relations
 
 				// for each pair of entities
 				for (int i = 0; i < entities.size(); i++) {
 					for (int j = 0; j < entities.size(); j++) {
 						// entities
-						ACEEntity e1 = ((ACEEntity) entities.get(i));
-						ACEEntity e2 = ((ACEEntity) entities.get(j));
+						ACEEntity e1 = ((ACEEntity) entities.get(i)); // first entity
+						ACEEntity e2 = ((ACEEntity) entities.get(j)); // second entity
 
-						List<ACEEntityMention> e1m = e1.entityMentionList;
-						List<ACEEntityMention> e2m = e2.entityMentionList;
+						List<ACEEntityMention> e1m = e1.entityMentionList; // mention list of first entity
+						List<ACEEntityMention> e2m = e2.entityMentionList; // mention list of second entity
 
-						// mention pairs
+						// for each combination of mention pairs
 						for (ACEEntityMention am1 : e1m) {
 							for (ACEEntityMention am2 : e2m) {
 
-								Mention m1 = new Mention(e1, am1, ta);
-								Mention m2 = new Mention(e2, am2, ta);
+								Mention m1 = new Mention(e1, am1, ta); // first mention
+								Mention m2 = new Mention(e2, am2, ta); // second mention
 
 								// add features and label if mention pair occurs within the same sentence(s)
 								if (mentionsInSameSentence(ta,m1,m2)) {
 									List<Integer> idxList = new ArrayList<Integer>();
-									List<Integer> valList = new ArrayList<Integer>();
+									List<Double>  valList = new ArrayList<Double>();
 									
-//									for (FeatureEnum feature : features) addFeatureToSparseVector(idxList, valList, feature, m1, m2);
+									// add feature values to sparse feature vector representation
+									for (FeatureEnum feature : features) addFeatureToSparseVector(ta, lm, idxList, valList, feature, m1, m2);
+									
+									// add bias term
+									idxList.add(lm.getNumOfFeature()+1);
+									valList.add(1.0);
+									
+									// create instance
+									IFeatureVector     fv = new FeatureVectorBuffer(idxList, valList).toFeatureVector();
+									MultiClassInstance mi = new MultiClassInstance(lm.getNumOfFeature()+1, lm.getNumOfLabels(), fv); 
 
-									// relation label
-//									lm.addLabel(Features.REL+REUtils.getRelationType(m1, m2, relations));
+									// create label
+									MultiClassLabel    ml = new MultiClassLabel(lm.getLabelId(Features.REL+REUtils.getRelationType(m1, m2, relations)));
+//									
+									// add instance-output pair to SLProblem
+									sp.addExample(mi, ml);
 								}
 							}
 						}
