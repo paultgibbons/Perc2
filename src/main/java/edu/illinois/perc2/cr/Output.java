@@ -17,6 +17,7 @@
  *******************************************************************************/
 package edu.illinois.perc2.cr;
 
+import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntityMention;
 import edu.illinois.cs.cogcomp.sl.core.IStructure;
 
 /**
@@ -29,6 +30,8 @@ public class Output implements IStructure {
 	public final double trueScore;
 	public String mention1id;
 	public String mention2id;
+	public ACEEntityMention mention1;
+	public ACEEntityMention mention2;
 	
 	public Output(boolean acr){
 		this.areCoReferencing = acr;

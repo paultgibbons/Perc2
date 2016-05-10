@@ -18,6 +18,7 @@
 package edu.illinois.perc2.cr;
 
 
+import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntityMention;
 import edu.illinois.cs.cogcomp.sl.core.IInstance;
 
 /**
@@ -26,19 +27,31 @@ import edu.illinois.cs.cogcomp.sl.core.IInstance;
  */
 public class Input implements IInstance {
 
-	public final String arg1id;
-	public final String arg2id;
-	public final String type1;
-	public final String type2;
-	public final String head1;
-	public final String head2;
-	public final String extent1;
-	public final String extent2;
-	public final Boolean isSubstr;
-	public final int distance;
+	public ACEEntityMention mention1;
+	public ACEEntityMention mention2;
+	
+	public String arg1id;
+	public String arg2id;
+	public String type1;
+	public String type2;
+	public String head1;
+	public String head2;
+	public String extent1;
+	public String extent2;
+	public Boolean isSubstr;
+	public int distance;
+	public int syn;
+	public int ant;
+	public int hyp;
+	public int cas;
 	int hashCode = 0;
 	
-	public Input(String id1, String id2, String type1, String type2, int distance, String head1, String head2, String extent1, String extent2, Boolean isSubstr) {
+	/*public Input() throws Exception {
+		throw new Exception("Dont use blank input");
+	}*/
+	
+	public Input(String id1, String id2, String type1, String type2, int distance, String head1, String head2,
+			String extent1, String extent2, Boolean isSubstr, int syn, int ant, int hyp, int cas) {
         this.arg1id = id1;
         this.arg2id = id2;
         this.type1 = type1;
@@ -49,6 +62,10 @@ public class Input implements IInstance {
         this.extent1 = extent1;
         this.extent2 = extent2;
         this.isSubstr = isSubstr;
+        this.syn = syn;
+        this.ant = ant;
+        this.hyp = hyp;
+        this.cas = cas;
         
         //hashCode = ... 
 	}
@@ -77,6 +94,8 @@ public class Input implements IInstance {
 		sb.append(extent2);
 		sb.append(' ');
 		sb.append(isSubstr);
+		sb.append(' ');
+		sb.append(syn);
 		
 
 		return sb.toString();

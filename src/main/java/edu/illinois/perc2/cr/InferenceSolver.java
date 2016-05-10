@@ -50,6 +50,9 @@ public class InferenceSolver extends
 		Output o = new Output(acr, truthValue);
 		o.mention1id = ((Input) input).arg1id;
 		o.mention2id = ((Input) input).arg2id;
+		
+		o.mention1 = ((Input) input).mention1;
+		o.mention2 = ((Input) input).mention2;
 		return o;
 	}
 	
@@ -60,6 +63,9 @@ public class InferenceSolver extends
 		if (goldLabeledSeq.areCoReferencing == predictedLabeledSeq.areCoReferencing) {
 			return 0;
 		} else {
+			if (goldLabeledSeq.areCoReferencing) {
+				return 5;
+			}
 			return 1;
 		}
 	}

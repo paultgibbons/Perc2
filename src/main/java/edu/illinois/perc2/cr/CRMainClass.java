@@ -17,7 +17,9 @@
  *******************************************************************************/
 package edu.illinois.perc2.cr;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,9 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.zip.DataFormatException;
 
-import edu.illinois.cs.cogcomp.core.io.LineIO;
-import edu.illinois.cs.cogcomp.core.utilities.commands.CommandDescription;
-import edu.illinois.cs.cogcomp.core.utilities.commands.InteractiveShell;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntity;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntityMention;
@@ -42,7 +41,9 @@ import edu.illinois.cs.cogcomp.sl.learner.LearnerFactory;
 import edu.illinois.cs.cogcomp.sl.learner.l2_loss_svm.L2LossSSVMLearner;
 import edu.illinois.cs.cogcomp.sl.util.Lexiconer;
 import edu.illinois.cs.cogcomp.sl.util.WeightVector;
-
+import edu.mit.jwi.*;
+import edu.mit.jwi.item.*;
+import edu.mit.jwi.morph.WordnetStemmer;
 public class CRMainClass {
 
 	public static void crMain(List<ACEDocument> docs) throws Exception {
@@ -88,20 +89,13 @@ public class CRMainClass {
 		List<List<String>> parallel_mention_ids = new ArrayList<List<String>>();
 		Map<String, Integer> entity_size_map = new HashMap<String, Integer>();
 		for(ACEDocument doc: docs) {
+			if (doc == null) {
+				return;
+			}
 			List<String> parallel_mention_id = new ArrayList<String>();
 			spll.add(readStructuredDataTest(doc, parallel_mention_id, entity_size_map));
 			parallel_mention_ids.add(parallel_mention_id);
 		}
-		
-		/*
-		double acc = 0.0;
-		double total = 0.0;
-		int falses = 0;
-		int fp = 0;
-		int tp = 0;
-		int fn = 0;
-		int tn = 0;
-		*/
 		
 		List<List<Set<String>>> all_clusters = new ArrayList<List<Set<String>>>();
 		
@@ -256,6 +250,7 @@ public class CRMainClass {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	public static SLProblem readStructuredData(List<ACEDocument> docs)
 			throws IOException, DataFormatException {
 		SLProblem sp = new SLProblem();
@@ -267,8 +262,12 @@ public class CRMainClass {
 		int docErrorCount = 0;
 		int docCount = 0;
 		
-		
-		
+		String wnhome = System.getenv("WNHOME");
+		wnhome = "/usr/local/Cellar/wordnet/3.1";
+		String path = wnhome + File.separator + "dict"; URL url = new URL("file", null, path);
+		// construct the dictionary object and open it
+		IDictionary dict = new Dictionary(url); dict.open();
+		WordnetStemmer stemmer = new WordnetStemmer(dict);
 		for(ACEDocument doc: docs) {
 			try{
 			List<?> entity_list = doc.aceAnnotation.entityList;
@@ -307,7 +306,7 @@ public class CRMainClass {
 
 					boolean match = ((parallel_entity_list.get(i)).equals(parallel_entity_list.get(j))); 
 					
-					Input x = getInput(first, second, parallel_type_list, parallel_entity_list, i, j);
+					Input x = getInput(dict, stemmer, first, second, parallel_type_list, parallel_entity_list, i, j);
 					sp.addExample(x, new Output(match));
 				}
 			}
@@ -319,11 +318,13 @@ public class CRMainClass {
 		}
 		System.out.println("doc Error Count:"+docErrorCount);
 		System.out.println("doc Count:" + docCount);
+		dict.close();
 		return sp;
 	}
 
+	@SuppressWarnings("unchecked")
 	public static List<SLProblem> readStructuredDataTest(
-			ACEDocument doc, List<String> mention_id_list, Map<String, Integer> entity_size_map) {
+			ACEDocument doc, List<String> mention_id_list, Map<String, Integer> entity_size_map) throws Exception {
 		List<SLProblem> splist = new ArrayList<SLProblem>();
 		
 		List<?> entity_list = doc.aceAnnotation.entityList;
@@ -332,7 +333,13 @@ public class CRMainClass {
 		List<ACEEntityMention> entity_mention_list= new ArrayList<ACEEntityMention>();
 		List<String> parallel_type_list = new ArrayList<String>();
 		List<String> parallel_entity_list = new ArrayList<String>();
-
+		
+		String wnhome = System.getenv("WNHOME");
+		wnhome = "/usr/local/Cellar/wordnet/3.1";
+		String path = wnhome + File.separator + "dict"; URL url = new URL("file", null, path);
+		// construct the dictionary object and open it
+		IDictionary dict = new Dictionary(url); dict.open();
+		WordnetStemmer stemmer = new WordnetStemmer(dict);
 		for (int i = 0; i < entity_size; i++) {
 			ACEEntity current = (ACEEntity) entity_list.get(i);
 			entity_size_map.put(current.id, current.entityMentionList.size());
@@ -364,21 +371,21 @@ public class CRMainClass {
 				ACEEntityMention first = entity_mention_list.get(j);
 				boolean match = ((parallel_entity_list.get(i)).equals(parallel_entity_list.get(j))); 
 				
-				Input x = getInput(first, second, parallel_type_list, parallel_entity_list, i, j);
+				Input x = getInput(dict, stemmer, first, second, parallel_type_list, parallel_entity_list, i, j);
 				sp.addExample(x, new Output(match));
 			}
 			splist.add(sp);
 		}
-		
+		dict.close();
 		return splist;
 	}
 	
-	private static Input getInput(ACEEntityMention first, ACEEntityMention second, List<String> parallel_type_list, List<String> parallel_entity_list, int i, int j) {
+	private static Input getInput(IDictionary dict, WordnetStemmer stemmer, ACEEntityMention first, ACEEntityMention second, List<String> parallel_type_list, List<String> parallel_entity_list, int i, int j) throws Exception {
 		String id1 = first.id;
 		String id2 = second.id;
 		
-		String type1 = parallel_type_list.get(i);
-		String type2 = parallel_type_list.get(j);
+		//String type1 = parallel_type_list.get(i);
+		//String type2 = parallel_type_list.get(j);
 		
 		int distance1 = Math.abs(first.headEnd - second.headStart);
 		int distance2 = Math.abs(first.headStart - second.headEnd);
@@ -394,9 +401,135 @@ public class CRMainClass {
 		String secondHead = first.extentStart >= second.extentStart ? first.head : second.head;
 		
 		boolean substr = (prevHead.toLowerCase().contains(secondHead.toLowerCase()) );
-		boolean match = ((parallel_entity_list.get(i)).equals(parallel_entity_list.get(j))); 
+		//boolean match = ((parallel_entity_list.get(i)).equals(parallel_entity_list.get(j))); 
 		
-		Input x = new Input(id1, id2, type1, type2, distance, head1, head2, extent1, extent2, substr);
+		int syn = areSynonyms(dict, stemmer, head1, head2);
+		int ant = areAntonyms(dict, stemmer, head1, head2);
+		int hyp = areHypernyms(dict, stemmer, head1, head2);
+		int cas = caseMatch(dict, stemmer, head1, head2);
+		
+		Input x = new Input(id1, id2, "", "", distance, head1, head2, extent1, extent2, substr, syn, ant, hyp, cas);
 		return x;
+	}
+	
+	public static int areSynonyms(IDictionary dict, WordnetStemmer stemmer, String w1, String w2) throws IOException {
+		// construct the URL to the Wordnet dictionary directory
+		
+		IWord word;
+		IWord word2;
+		
+		try {
+			IIndexWord idxWord = dict.getIndexWord(stemmer.findStems(w1, POS.NOUN).get(0), POS.NOUN);
+			IWordID wordID = idxWord.getWordIDs().get(0);
+			IIndexWord idxWord2 = dict.getIndexWord(stemmer.findStems(w2, POS.NOUN).get(0), POS.NOUN);
+			IWordID wordID2 = idxWord2.getWordIDs().get(0);
+			word = dict.getWord(wordID);
+			word2 = dict.getWord(wordID2);
+		} catch (NullPointerException e) {
+			return 0;
+		} catch (IndexOutOfBoundsException e) {
+			return 0;
+		}
+		String lemma = word2.getLemma();
+		ISynset synset = word.getSynset();
+        for (IWord w : synset.getWords()) {
+        	if (w.getLemma().equals(lemma)) {
+        		return 1;
+        	}
+        }
+        return 0;
+		
+	}
+	
+	public static int areAntonyms(IDictionary dict, WordnetStemmer stemmer, String w1, String w2) throws IOException {
+		// construct the URL to the Wordnet dictionary directory
+		
+		IWord word;
+		IWord word2;
+		
+		try {
+			IIndexWord idxWord = dict.getIndexWord(stemmer.findStems(w1, POS.NOUN).get(0), POS.NOUN);
+			IWordID wordID = idxWord.getWordIDs().get(0);
+			IIndexWord idxWord2 = dict.getIndexWord(stemmer.findStems(w2, POS.NOUN).get(0), POS.NOUN);
+			IWordID wordID2 = idxWord2.getWordIDs().get(0);
+			word = dict.getWord(wordID);
+			word2 = dict.getWord(wordID2);
+		} catch (NullPointerException e) {
+			return 0;
+		} catch (IndexOutOfBoundsException e) {
+			return 0;
+		}
+		String lemma = word2.getLemma();
+		List<IWordID> antonyms = word.getRelatedWords(Pointer.ANTONYM);
+        for (IWordID wi : antonyms) {
+        	IWord w = dict.getWord(wi);
+        	if (w.getLemma().equals(lemma)) {
+        		
+        		return 1;
+        	}
+        }
+        
+        return 0;
+		
+	}
+	
+	public static int areHypernyms(IDictionary dict, WordnetStemmer stemmer, String w1, String w2) throws IOException {
+		// construct the URL to the Wordnet dictionary directory
+		
+		if (true) {
+			return 0;
+		}
+		
+		IWord word;
+		IWord word2;
+		
+		try {
+			IIndexWord idxWord = dict.getIndexWord(stemmer.findStems(w1, POS.NOUN).get(0), POS.NOUN);
+			IWordID wordID = idxWord.getWordIDs().get(0);
+			IIndexWord idxWord2 = dict.getIndexWord(stemmer.findStems(w2, POS.NOUN).get(0), POS.NOUN);
+			IWordID wordID2 = idxWord2.getWordIDs().get(0);
+			word = dict.getWord(wordID);
+			word2 = dict.getWord(wordID2);
+		} catch (NullPointerException e) {
+			return 0;
+		} catch (IndexOutOfBoundsException e) {
+			return 0;
+		}
+		String lemma = word2.getLemma();
+		List<IWordID> antonyms = word.getRelatedWords(Pointer.HYPERNYM);
+        for (IWordID wi : antonyms) {
+        	IWord w = dict.getWord(wi);
+        	if (w.getLemma().equals(lemma)) {
+        		return 1;
+        	}
+        }
+        return 0;
+		
+	}
+	
+	public static int caseMatch (IDictionary dict, WordnetStemmer stemmer, String w1, String w2) throws IOException {
+
+		IWord word=null;
+		IWord word2=null;
+		
+		try {
+			IIndexWord idxWord = dict.getIndexWord(stemmer.findStems(w1, POS.NOUN).get(0), POS.NOUN);
+			IWordID wordID = idxWord.getWordIDs().get(0);
+			IIndexWord idxWord2 = dict.getIndexWord(stemmer.findStems(w2, POS.NOUN).get(0), POS.NOUN);
+			IWordID wordID2 = idxWord2.getWordIDs().get(0);
+			word = dict.getWord(wordID);
+			word2 = dict.getWord(wordID2);
+		} catch (NullPointerException e) {
+			return 0;
+		} catch (IndexOutOfBoundsException e) {
+			return 0;
+		}
+		String lemma1 = word.getLemma();
+		String lemma2 = word2.getLemma();
+		
+		boolean b1 = (lemma1.equals(w1));
+		boolean b2 = (lemma2.equals(w2));
+		
+		return ((b1 && b2) || ((!b1) && (!b2))) ? 1 : 0;
 	}
 }
