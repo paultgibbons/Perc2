@@ -63,6 +63,14 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 			fvb.addFeature(5,0.0f);
 			fvb.addFeature(6,isSubstr);
 			fvb.addFeature(7,0.0f);
+			fvb.addFeature(8,ins.syn);
+			fvb.addFeature(9,0.0f);
+			fvb.addFeature(10,ins.ant);
+			fvb.addFeature(11,0.0f);
+			fvb.addFeature(12,ins.hyp);
+			fvb.addFeature(13,0.0f);
+			fvb.addFeature(14,ins.cas);
+			fvb.addFeature(15,0.0f);
 			
 		} else {
 			fvb.addFeature(0,0.0f);
@@ -73,6 +81,14 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 			fvb.addFeature(5,exmatch);
 			fvb.addFeature(6,0.0f);
 			fvb.addFeature(7,isSubstr);
+			fvb.addFeature(8,0.0f);
+			fvb.addFeature(9,ins.syn);
+			fvb.addFeature(10,0.0f);
+			fvb.addFeature(11,ins.ant);
+			fvb.addFeature(12,0.0f);
+			fvb.addFeature(13,ins.hyp);
+			fvb.addFeature(14,0.0f);
+			fvb.addFeature(15,ins.cas);
 		}
 		fvb.addFeature(8, 1.0f); // bias term
 		
