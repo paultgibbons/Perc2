@@ -55,28 +55,28 @@ public class FeatureGenerator extends AbstractFeatureGenerator {
 		FeatureVectorBuffer fvb = new FeatureVectorBuffer();
 		
 		if (o.areCoReferencing) {
-			fvb.addFeature(0,fmatch);
+			fvb.addFeature(0,0.0f); //fmatch
 			fvb.addFeature(1,0.0f);
-			fvb.addFeature(2,hmatch);
+			fvb.addFeature(2,0.0f); // hmatch
 			fvb.addFeature(3,0.0f);
-			fvb.addFeature(4,exmatch);
+			fvb.addFeature(4,exmatch); // exmatch
 			fvb.addFeature(5,0.0f);
-			fvb.addFeature(6,isSubstr);
+			fvb.addFeature(6,isSubstr); // isSubstr
 			fvb.addFeature(7,0.0f);
-			fvb.addFeature(8,ins.syn);
+			fvb.addFeature(8,ins.syn); // syn
 			fvb.addFeature(9,0.0f);
-			fvb.addFeature(10,ins.ant);
+			fvb.addFeature(10,ins.ant); // ant
 			fvb.addFeature(11,0.0f);
-			fvb.addFeature(12,ins.hyp);
+			fvb.addFeature(12,ins.hyp); // hyp
 			fvb.addFeature(13,0.0f);
-			fvb.addFeature(14,ins.cas);
+			fvb.addFeature(14,ins.cas); // cas
 			fvb.addFeature(15,0.0f);
 			
 		} else {
 			fvb.addFeature(0,0.0f);
-			fvb.addFeature(1,fmatch);
+			fvb.addFeature(1,0.0f);
 			fvb.addFeature(2,0.0f);
-			fvb.addFeature(3,hmatch);
+			fvb.addFeature(3,0.0f);
 			fvb.addFeature(4,0.0f);
 			fvb.addFeature(5,exmatch);
 			fvb.addFeature(6,0.0f);

@@ -48,7 +48,7 @@ public class CRMainClass {
 
 	public static void crMain(List<ACEDocument> docs) throws Exception {
 			String configFilePath = "config/CR.config";
-			String modelPath = "models/CRmodel1";
+			String modelPath = "models/CRmodel2";
 			
 			SLModel model = new SLModel();
 			model.lm = new Lexiconer();

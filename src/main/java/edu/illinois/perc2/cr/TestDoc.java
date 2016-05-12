@@ -90,7 +90,7 @@ public class TestDoc {
 				NP.getEndCharOffset()-1 <= mention.extentEnd);
 	}
 	
-	private SpanLabelView getNP(ACEDocument doc) throws Exception {
+	SpanLabelView getNP(ACEDocument doc) throws Exception {
 		Map<String, ACEEntityMention> startingSPACEending = new HashMap<>();
         for (ACEEntity entity : doc.aceAnnotation.entityList) {
         	for (edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEEntityMention entityMention : entity.entityMentionList) {
@@ -108,6 +108,9 @@ public class TestDoc {
 		
 		// view gives you a list of constituents, each of which has a surface string and a corresponding label ("NP", "VP", etc)
 		List<Constituent> constituents = v.getConstituents();
+		v.removeConstituent(constituents.get(constituents.size()-1));
+		v.removeConstituent(constituents.get(0));
+		constituents = v.getConstituents();
 		List<Constituent> bad = new ArrayList<>();
 		for (int i = 0; i < constituents.size(); i++) {
 			Constituent c = constituents.get(i);
@@ -246,7 +249,7 @@ public class TestDoc {
 	 * @throws Exception
 	 */
 	private List<Set<ACEEntityMention>> predict(List<Problem> problems) throws Exception {
-		SLModel model = SLModel.loadModel("models/CRmodel1");
+		SLModel model = SLModel.loadModel("models/CRmodel2");
 		List<Set<ACEEntityMention>> clusters = new ArrayList<Set<ACEEntityMention>>();
 		for (Problem problem : problems) {
 			assignMention(problem, model, clusters);
@@ -340,6 +343,18 @@ public class TestDoc {
 		}
 		return null;
 	}
+	
+	private Set<ACEEntityMention> findPredictedCluster(ACEEntityMention gold,
+			List<Set<ACEEntityMention>> predictedClusters) {
+		for ( Set<ACEEntityMention> cluster : predictedClusters ) {
+			for ( ACEEntityMention predictedMention : cluster ) {
+				if (match(predictedMention,gold)) {
+					return cluster;
+				}
+			}
+		}
+		return null;
+	}
 
 	/**
 	 * Evaluation of a single document
@@ -351,11 +366,16 @@ public class TestDoc {
 		List<Set<ACEEntityMention>> goldClusters = getGoldClusters(doc);
 		List<Set<ACEEntityMention>> predictedClusters = predict(problems);
 		
+		Marker m = new Marker();
+		String colorPath = "/Users/paultgibbons/colored";
+		m.color(doc, predictedClusters, colorPath);
+		
 		metrics[4] += (double) goldClusters.size();
 		for ( Set<ACEEntityMention> cluster : predictedClusters ) {
 			// for each cluster in the document
 			for ( ACEEntityMention mention : cluster ) {
 				// for each mention in the cluster
+				
 				Set<ACEEntityMention> goldCluster = findGoldCluster(mention, goldClusters);
 				if (goldCluster == null) {
 					metrics[0] += 1.0; // no matching cluster

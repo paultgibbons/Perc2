@@ -1,6 +1,7 @@
 package edu.illinois.perc2.cr;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 import edu.illinois.cs.cogcomp.core.datastructures.textannotation.Constituent;
 
@@ -24,7 +25,11 @@ public class MentionDetector {
 		if (!c.getLabel().equals("NP")) {
 			return false;
 		}
-		
-		return true;
+		String extent = c.toString();
+		boolean isNumeric = Pattern.matches("[\\d]+\\D[\\d]+.*", extent);
+		boolean isApostrapheed = Pattern.matches(".*'.*", extent);
+		boolean isNothing = Pattern.matches("nothing.*", extent);
+		boolean isNoone = Pattern.matches("no one.*", extent);
+		return (!(isNumeric || isApostrapheed || isNothing || isNoone));
 	}
 }

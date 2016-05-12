@@ -133,12 +133,22 @@ public class MainClass {
 		System.exit(0);
 	}
 	
-	
+	public static void play3() throws Exception {
+		AceFileProcessor afp = new AceFileProcessor(new CcgTextAnnotationBuilder( new IllinoisTokenizer() ));
+		List<ACEDocument> docs = readAll(afp);
+		
+		Marker m = new Marker();
+		String colorPath = "/Users/paultgibbons/colored/color.html";
+		for (ACEDocument doc : docs) {
+			m.color(doc, colorPath);
+		}
+		System.exit(0);
+	}
 	
 	
 	public static void main(String[] args) throws Exception {
-		//play2();
-		boolean training = false;
+		//play3();
+		boolean training = true;
 		System.out.println("running corefernece resolution");
 		AceFileProcessor afp = new AceFileProcessor(new CcgTextAnnotationBuilder( new IllinoisTokenizer() ));
 		
