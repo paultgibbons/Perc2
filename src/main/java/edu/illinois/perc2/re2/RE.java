@@ -38,25 +38,29 @@ public class RE {
 
 	public static void main(String[] args) throws Exception {
 		boolean training = true;
+		boolean use_ner  = true;
 
 		AceFileProcessor afp = new AceFileProcessor(new TokenizerTextAnnotationBuilder(new IllinoisTokenizer()));
-		MultiClassIOManager.readCorpus(afp);
-		List<ACEDocument> train = MultiClassIOManager.getTrainingDocuments();
-		List<ACEDocument> test  = MultiClassIOManager.getTestDocuments();
+		MultiClassIOManager.readCorpus(afp,use_ner);
+		List<ACEDocument> train      = MultiClassIOManager.getTrainingDocuments();
+		List<ACEDocument> test_gold  = MultiClassIOManager.getGoldTestDocuments();
+		List<ACEDocument> test_ner   = MultiClassIOManager.getNERTestDocuments();
 		
 		System.out.println(train.size()+" training documents read.");
-		System.out.println(test.size()+" test documents read.");
+		System.out.println(test_gold.size()+" gold test documents read.");
+		System.out.println(test_ner.size()+" NER test documents read.");
 		
 		AnnotatorService annotator = REUtils.initializeAnnotator();
 		
 		if (training) {
-			RE.train(train, annotator);
+			RE.train(train, annotator, use_ner);
 			System.out.println("Done training.");
 			
 		} else {
 			System.out.println("Using pretrained model.");
 		}
-		RE.test(test, annotator, "models/REModel1");
+		
+		RE.test(test_gold, test_ner, annotator, use_ner, "models/REModel1");
 	}
 	
 	/**
@@ -65,7 +69,7 @@ public class RE {
 	 * @param annotator Initialized annotator service
 	 * @throws Exception 
 	 */
-	public static void train(List<ACEDocument> docs, AnnotatorService annotator) throws Exception {
+	public static void train(List<ACEDocument> docs, AnnotatorService annotator, boolean ner) throws Exception {
 			String configFilePath = "config/RE.config";
 			String modelPath 	  = "models/REmodel1";
 			
@@ -73,7 +77,7 @@ public class RE {
 			model.lm = new Lexiconer();
 
 			model.lm.setAllowNewFeatures(true);
-			SLProblem sp = MultiClassIOManager.readStructuredData(docs, model.lm, annotator);
+			SLProblem sp = MultiClassIOManager.readStructuredData(docs, model.lm, annotator, false, ner);
 
 			// Disallow the creation of new features
 			model.lm.setAllowNewFeatures(false);
@@ -108,45 +112,67 @@ public class RE {
 	 * @param modelPath File path of the saved model
 	 * @throws Exception
 	 */
-	public static void test(List<ACEDocument> docs, AnnotatorService annotator, String modelPath) throws Exception {
+	public static void test(List<ACEDocument> gold_docs, List<ACEDocument> ner_docs, AnnotatorService annotator, boolean ner, String modelPath) throws Exception {
 		MultiClassModel model = (MultiClassModel) SLModel.loadModel(modelPath);
 		model.lm.setAllowNewFeatures(false);
 		
-		SLProblem sp  = MultiClassIOManager.readStructuredData(docs, model.lm, annotator);
-		
-		System.out.println();
-		for (int i = 0; i < model.lm.getNumOfLabels(); i++) {
-			System.out.println("Label "+i+": "+model.lm.getLabelString(i));
-		}
+		List<ACEDocument> docs = (ner ? ner_docs : gold_docs);
+		MultiClassIOManager.readStructuredData(gold_docs, model.lm, annotator, false, true);
+		SLProblem sp  = MultiClassIOManager.readStructuredData(docs, model.lm, annotator, ner, ner);
+		if (ner) REUtils.initializeSortedMentionList(gold_docs, annotator);
 
 		double acc   = 0.0, nacc   = 0.0;
 		double total = 0.0, ntotal = 0.0;
 		int falses = 0;
 		
 		HashMap<String, HashMap<String, Integer>> confusion_mtx = new HashMap<String, HashMap<String, Integer>>();
+		HashMap<String, Integer> tp = new HashMap<String, Integer>();
+		HashMap<String, Integer> fp = new HashMap<String, Integer>();
+		HashMap<String, Integer> fn = new HashMap<String, Integer>();
+		
+		System.out.println();
+		for (int i = 0; i < model.lm.getNumOfLabels(); i++) {
+			System.out.println("Label "+i+": "+model.lm.getLabelString(i));
+			confusion_mtx.put(model.lm.getLabelString(i), new HashMap<String, Integer>());
+			for (int j = 0; j < model.lm.getNumOfLabels(); j++) {
+				confusion_mtx.get(model.lm.getLabelString(i)).put(model.lm.getLabelString(j), 0);
+				tp.put(model.lm.getLabelString(j), 0);
+				fp.put(model.lm.getLabelString(j), 0);
+				fn.put(model.lm.getLabelString(j), 0);
+			}
+		}
 
 		for (int i = 0; i < sp.instanceList.size(); i++) {
 			MultiClassInstance ri   = (MultiClassInstance) sp.instanceList.get(i);
-			MultiClassLabel    gold = (MultiClassLabel) sp.goldStructureList.get(i);
-			MultiClassLabel    pred = (MultiClassLabel) model.infSolver.getBestStructure(model.wv, ri);
+			MultiClassLabel    pred = (MultiClassLabel)    model.infSolver.getBestStructure(model.wv, ri);
+			MultiClassLabel    gold = null;
+			
+			if (ner) gold = new MultiClassLabel(model.lm.getLabelId(REUtils.getMappedRelation(ri)));
+			gold = (MultiClassLabel) sp.goldStructureList.get(i);
 			
 			String gold_label = model.lm.getLabelString(gold.output);
 			String pred_label = model.lm.getLabelString(pred.output);
 			
-			if (!confusion_mtx.containsKey(gold_label)) confusion_mtx.put(gold_label, new HashMap<String, Integer>());
-			if (!confusion_mtx.get(gold_label).containsKey(pred_label)) confusion_mtx.get(gold_label).put(pred_label, 0);
 			confusion_mtx.get(gold_label).put(pred_label, confusion_mtx.get(gold_label).get(pred_label)+1);
-
+			
 			if (gold.output == pred.output) {
 				acc += 1.0;
 				if (gold.output != model.lm.getLabelId(Features.REL+"NONE")) nacc += 1.0;
+				tp.put(gold_label, tp.get(gold_label)+1);
 			}
+			else {
+				fp.put(pred_label, fp.get(pred_label)+1);
+				fn.put(gold_label, fn.get(gold_label)+1);
+			}
+			
 			if (pred.output == model.lm.getLabelId(Features.REL+"NONE")) {
 				falses += 1;
 			}
 			total += 1.0;
 			if (gold.output != model.lm.getLabelId(Features.REL+"NONE")) ntotal += 1.0;
 		}
+		System.out.println("Unmapped NER mentions: "+REUtils.unmapped_mentions);
+		
 		System.out.println("\nNONE predictions: " +falses+ ", total: " +total);
 		System.out.println("Accuracy: " + acc / total);
 		System.out.println("Accuracy on non-NONE labels: " + nacc/ntotal);
@@ -154,11 +180,40 @@ public class RE {
 		
 		for (String g : confusion_mtx.keySet()) {
 			HashMap<String, Integer> m = confusion_mtx.get(g);
-			System.out.println("GOLD: "+g);
+			
+			double precision = REUtils.computePrecision(confusion_mtx, g, model.lm);
+			double recall    = REUtils.computeRecall(confusion_mtx, g, model.lm);
+			double F1        = REUtils.computeF1(precision, recall);
+			System.out.println("GOLD: "+g+"\tPrecision: "+String.format("%1$-7.5f", precision)+" | Recall: "+String.format("%1$-7.5f", recall)+" | F1: "+String.format("%1$-7.5f", F1));
+			
 			for (String p : m.keySet()) {
-				System.out.println("\tPRED: "+p+"\t"+m.get(p));
+				System.out.println("\tPRED: "+String.format("%1$-10s\t", p)+m.get(p)+(g.equals(p) ? "\t<correct>" : ""));
 			}
 			System.out.println();
 		}
+		
+		int true_positive = 0, false_positive = 0, false_negative = 0;
+		for (String k : tp.keySet()) if (!k.contains("NONE")) true_positive  += tp.get(k);
+		for (String k : fp.keySet()) if (!k.contains("NONE")) false_positive += fp.get(k);
+		for (String k : fn.keySet()) if (!k.contains("NONE")) false_negative += fn.get(k);
+		
+		double precision = REUtils.computePrecision(true_positive, false_positive);
+		double recall	 = REUtils.computeRecall(true_positive, false_negative);
+		
+		System.out.println("\nOverall precision -NONE: "+precision);
+		System.out.println("Overall recall -NONE:    "+recall);
+		System.out.println("Overall F1 -NONE:        "+REUtils.computeF1(precision, recall));
+		
+		true_positive = 0; false_positive = 0; false_negative = 0;
+		for (String k : tp.keySet()) true_positive  += tp.get(k);
+		for (String k : fp.keySet()) false_positive += fp.get(k);
+		for (String k : fn.keySet()) false_negative += fn.get(k);
+		
+		precision = REUtils.computePrecision(true_positive, false_positive);
+		recall	 = REUtils.computeRecall(true_positive, false_negative);
+		
+		System.out.println("\nOverall precision: "+precision);
+		System.out.println("Overall recall:    "+recall);
+		System.out.println("Overall F1:        "+REUtils.computeF1(precision, recall));
 	}
 }

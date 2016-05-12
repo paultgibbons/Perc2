@@ -16,8 +16,30 @@ public class Features {
 	public static final String BM1L   = "bm1l:";   // second word before M1
 	public static final String AM2F   = "am2f:";   // first word after M2
 	public static final String AM2L   = "am2l:";   // second word after M2
+	
 	public static final String ET12   = "et12:";   // combination of mention entity types (PERSON, ORGANIZATION, FACILITY, LOCATION, and Geo-Political Entity or GPE)
+	
 	public static final String ML12   = "ml12:";   // combination of entity levels (NAME, NOMIAL, and PRONOUN)
+	
+	public static final String MB     = "mb:";           // number of mentions in between
+	public static final String WB	  = "wb:";	         // number of words in between
+	public static final String M1gtM2 = "m1>m2:";        // M2 is included in M1
+	public static final String M1ltM2 = "m1<m2:";        // M1 is included in M2
+	public static final String ETM1gtM2 = "et12+m1>m2:"; // ET12 + M1 > M2
+	public static final String ETM1ltM2 = "et12+m1<m2:"; // ET12 + M1 < M2
+	public static final String HMM1gtM2 = "hm12+m1>m2:"; // HM12 + M1 > M2
+	public static final String HMM1ltM2 = "hm12+m1<m2:"; // HM12 + M1 < M2
+	
+	public static final String CPHBNULL = "cphbnull:"; // no phrase in between
+	public static final String CPHBFL   = "cphbfl:";   // only phrase head when only one phrase in between
+	public static final String CPHBF    = "cphbf:";    // first phrase head in between when at least two phrases in between
+	public static final String CPHBL    = "cphbl:";    // last phrase head in between when at least two phrases in between
+	public static final String CPHBO    = "cphbo:";    // other phrase heads in between when at least three phrases in between
+	public static final String CPHBM1F  = "cphbm1f:";  // first phrase head before M1
+	public static final String CPHBM1L  = "cphbm1l:";  // second phrase head before M1
+	public static final String CPHAM2F  = "cpham2f:";  // first phrase head after M2
+	public static final String CPHAM2L  = "cpham2l:";  // second phrase head after M2
+	
 	public static final String REL	  = "rel:";	   // relation (label)
 	
 	public static final String UNK	  = "UNK";	   // UNK token
@@ -27,7 +49,14 @@ public class Features {
 	
 	// enum of features for switch statement convenience
 	public enum FeatureEnum {
-		WM1, HM1, WM2, HM2, HM12, WBNULL, WBFL, WBF, WBL, WBO, BM1F, BM1L, AM2F, AM2L, ET12, ML12, REL
+		WM1, HM1, WM2, HM2, HM12, WBNULL, WBFL, WBF, WBL, WBO, BM1F, BM1L, AM2F, AM2L, ET12, ML12, 
+		MB, WB, M1gtM2, M1ltM2, ETM1gtM2, ETM1ltM2, HMM1gtM2, HMM1ltM2, 
+		CPHBNULL, CPHBFL, CPHBF, CPHBL, CPHBO, CPHBM1F, CPHBM1L, CPHAM2F, CPHAM2L, REL
+	}
+	
+	// enum of set of features for switch statement convenience
+	public enum FeatureSetEnum {
+		WORD, ENTITY_TYPE, MENTION_LEVEL, OVERLAP, CHUNKING, DEPENDENCY, PARSE 
 	}
 	
 	/**
@@ -69,6 +98,40 @@ public class Features {
 			return ET12;
 		case ML12:
 			return ML12;
+		case MB:
+			return MB;
+		case WB:
+			return WB;
+		case M1gtM2:
+			return M1gtM2;
+		case M1ltM2:
+			return M1ltM2;
+		case ETM1gtM2:
+			return ETM1gtM2;
+		case ETM1ltM2:
+			return ETM1ltM2;
+		case HMM1gtM2:
+			return HMM1gtM2;
+		case HMM1ltM2:
+			return HMM1ltM2;
+		case CPHBNULL:
+			return CPHBNULL;
+		case CPHBFL:
+			return CPHBFL;
+		case CPHBF:
+			return CPHBF;
+		case CPHBL:
+			return CPHBL;
+		case CPHBO:
+			return CPHBO;
+		case CPHBM1F:
+			return CPHBM1F;
+		case CPHBM1L:
+			return CPHBM1L;
+		case CPHAM2F:
+			return CPHAM2F;
+		case CPHAM2L:
+			return CPHAM2L;
 		case REL:
 			return REL;
 		default:

@@ -17,6 +17,7 @@
  *******************************************************************************/
 package edu.illinois.perc2.re2;
 
+import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
 import edu.illinois.cs.cogcomp.sl.core.IInstance;
 import edu.illinois.cs.cogcomp.sl.util.IFeatureVector;
 
@@ -24,10 +25,16 @@ public class MultiClassInstance implements IInstance {
 	public final IFeatureVector baseFv;
 	public final int baseNfeature;
 	public final int numberOfClasses;
+	public final Mention m1;
+	public final Mention m2;
+	public final ACEDocument document;
 	
-	public MultiClassInstance(int total_n_fea,int total_number_class,IFeatureVector base_fv){
+	public MultiClassInstance(int total_n_fea,int total_number_class,IFeatureVector base_fv,Mention m1,Mention m2,ACEDocument document){
 		this.baseFv = base_fv;
 		this.baseNfeature = total_n_fea; 
 		this.numberOfClasses = total_number_class;
+		this.m1 = m1;
+		this.m2 = m2;
+		this.document = document;
 	}
 }

@@ -24,6 +24,7 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 
@@ -36,12 +37,17 @@ import edu.illinois.cs.cogcomp.sl.util.Lexiconer;
 
 public class MultiClassIOManager {
 	
-	private static final String BASE_DIR="data/train/ACE05_English/";   // base directory for train/test files
+	private static final String BASE_DIR="data/train/ACE05_English/";   // base directory for train/test files (gold)
+	private static final String NER_DIR ="data/NER-output/";			// base directory for train/test files (predicted)
 	private static final String TRAINING="data/all/training_files.txt"; // file of training filenames
     
     public static List<ACEDocument> train;				// training documents
-    public static List<ACEDocument> test;				// test documents
+    public static List<ACEDocument> test_gold;			// gold test documents
+    public static List<ACEDocument> test_ner;			// ner test documents
     public static List<String> 		training_filenames; // filenames of training documents (from Piazza)
+    
+    public static HashMap<ACEDocument, String> ner_filenames  = new HashMap<ACEDocument, String>();  // mapping from NER document to corresponding filename
+    public static HashMap<String, ACEDocument> filenames_gold = new HashMap<String, ACEDocument>(); // mapping from filename to corresponding gold document
     
     /**
      * Accessor method for training documents.
@@ -53,21 +59,26 @@ public class MultiClassIOManager {
      * Accessor methods for test documents.
      * @return list of test documents
      */
-    public static List<ACEDocument> getTestDocuments()		{ return test; 	}
+    public static List<ACEDocument> getGoldTestDocuments()	{ return test_gold; }
+    public static List<ACEDocument> getNERTestDocuments()   { return test_ner;  }
     
     /**
      * Reads a corpus using the BASE_DIR directory path and TRAINING file list specified in MultiClassIOManager.
      * Initializes training and test document lists.
      * @param afp AceFileProcessor object to be used
+     * @param ner Whether or not to use NER-predicted mentions
      */
-	public static void readCorpus(AceFileProcessor afp) {
-		train = new ArrayList<ACEDocument>(); // initialize list of training documents
-		test  = new ArrayList<ACEDocument>(); // initialize list of test documents
+	public static void readCorpus(AceFileProcessor afp, boolean ner) {
+		train     = new ArrayList<ACEDocument>(); // initialize list of training documents
+		test_gold = new ArrayList<ACEDocument>(); // initialize list of test documents
+		test_ner  = new ArrayList<ACEDocument>();
 		
 		// read in the list of training filenames to be used
 		readTrainingFilenames(TRAINING);
 		
 		// read in files in bn, nw directories and add them to train/test splits as specified in training filename list
+		readFolderAndAddToSplits(afp,NER_DIR);
+		
 		for(String dir : new String[]{"bn","nw"}) {
 			String folder = BASE_DIR + dir;
 			readFolderAndAddToSplits(afp,folder);
@@ -121,19 +132,23 @@ public class MultiClassIOManager {
             String annotationFile = fileList[fileID].getAbsolutePath();
             String fileName       = fileList[fileID].getName();
             
-            try{
-            	System.setOut(devnull);
-            	System.setErr(devnull);
-            	ACEDocument doc = afp.processAceEntry(new File(inputFolderStr), annotationFile);
-            	System.setOut(out);
-            	System.setErr(err);
-            	if (training_filenames.contains(fileName)) train.add(doc); // add to training split
-            	else test.add(doc);										   // add to test split
-            } catch (Exception e) {
-            	System.setOut(out);
-            	System.setErr(err);
-            	System.err.println("Error on reading file: "+annotationFile);
-            	System.err.println(e.toString());
+            System.setOut(devnull);
+            System.setErr(devnull);
+            System.out.println("Reading file: "+annotationFile);
+            ACEDocument doc = afp.processAceEntry(new File(inputFolderStr), annotationFile);
+            System.out.println(doc);
+            System.setOut(out);
+            System.setErr(err);
+            if (training_filenames.contains(fileName) && !inputFolderStr.contains("NER")) train.add(doc); // add to training split
+            else {																						  // add to test split
+            	if (inputFolderStr.contains("NER")) {
+            		test_ner.add(doc);
+            		ner_filenames.put(doc, fileName);
+            	}
+            	else {
+            		test_gold.add(doc);
+            		filenames_gold.put(fileName, doc);
+            	}
             }
 		}
 	}
@@ -217,11 +232,12 @@ public class MultiClassIOManager {
 	 * @param annotator Initialized annotator service to be used
 	 * @return Initialized SLProblem with training instances initialized from the input documents
 	 */
-	public static SLProblem readStructuredData(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator) {
+	public static SLProblem readStructuredData(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, boolean ner_data, boolean ner_features) {
 		SLProblem sp = new SLProblem();
         
-        if (lm.isAllowNewFeatures()) REUtils.addFeaturesToLexiconer(docs, lm, annotator);
-        REUtils.createInstances(docs, lm, annotator, sp);
+		REUtils.initializeSortedMentionList(docs, annotator);
+        if (lm.isAllowNewFeatures()) REUtils.addFeaturesToLexiconer(docs, lm, annotator, ner_features);
+        REUtils.createInstances(docs, lm, annotator, sp, ner_data, ner_features);
 		
 		return sp;
 	}

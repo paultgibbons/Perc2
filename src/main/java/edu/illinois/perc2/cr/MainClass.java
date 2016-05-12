@@ -8,7 +8,7 @@ import java.util.List;
 import java.io.FilenameFilter;
 
 import edu.illinois.cs.cogcomp.nlp.tokenizer.IllinoisTokenizer;
-import edu.illinois.cs.cogcomp.nlp.utility.CcgTextAnnotationBuilder;
+import edu.illinois.cs.cogcomp.nlp.utility.TokenizerTextAnnotationBuilder;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
 import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.AceFileProcessor;
 
@@ -90,7 +90,7 @@ public class MainClass {
 	public static void main(String[] args) throws Exception {
 		boolean training = false;
 		System.out.println("running corefernece resolution");
-		AceFileProcessor afp = new AceFileProcessor(new CcgTextAnnotationBuilder( new IllinoisTokenizer() ));
+		AceFileProcessor afp = new AceFileProcessor(new TokenizerTextAnnotationBuilder( new IllinoisTokenizer() ));
 		
 //		List<ACEDocument> docs = readFolder(afp, TEST_DIR);
 		

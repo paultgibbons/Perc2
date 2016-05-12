@@ -9,7 +9,7 @@ import java.io.ObjectOutputStream;
 import java.util.HashSet;
 
 import edu.illinois.cs.cogcomp.nlp.tokenizer.IllinoisTokenizer;
-import edu.illinois.cs.cogcomp.nlp.utility.CcgTextAnnotationBuilder;
+import edu.illinois.cs.cogcomp.nlp.utility.TokenizerTextAnnotationBuilder;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocument;
 import edu.illinois.cs.cogcomp.reader.ace2005.annotationStructure.ACEDocumentAnnotation;
 import edu.illinois.cs.cogcomp.reader.ace2005.documentReader.AceFileProcessor;
@@ -108,7 +108,7 @@ public class MainClass {
 	public static void main(String[] args) throws Exception {
 		boolean training = true;
 
-		AceFileProcessor afp = new AceFileProcessor(new CcgTextAnnotationBuilder( new IllinoisTokenizer() ));
+		AceFileProcessor afp = new AceFileProcessor(new TokenizerTextAnnotationBuilder( new IllinoisTokenizer() ));
 		ACEDocument doc = afp.processAceEntry(new File(TEST_DIR), TEST_DIR + "/" + TEST_FILE);
 		
 		List<ACEDocument> docs = new ArrayList<ACEDocument>();
