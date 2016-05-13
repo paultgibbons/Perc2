@@ -41,7 +41,7 @@ public class RE {
 	public static void main(String[] args) throws Exception {
 		boolean training   = true;
 		boolean use_ner    = false;
-		boolean sequential = true;
+		boolean sequential = false;
 
 		AceFileProcessor afp = new AceFileProcessor(new TokenizerTextAnnotationBuilder(new IllinoisTokenizer()));
 		MultiClassIOManager.readCorpus(afp,use_ner);

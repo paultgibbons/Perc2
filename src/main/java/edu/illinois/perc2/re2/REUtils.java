@@ -34,7 +34,8 @@ import edu.illinois.perc2.re2.Features.FeatureEnum;
 import edu.illinois.perc2.re2.Features.FeatureSetEnum;
 
 public class REUtils {
-	public static FeatureSetEnum[] feature_sets = {};
+	public static FeatureSetEnum[] feature_sets = { FeatureSetEnum.WORD, FeatureSetEnum.ENTITY_TYPE, FeatureSetEnum.MENTION_LEVEL,
+			FeatureSetEnum.CHUNKING };
 	
 	// full list of implemented features
 	public static FeatureEnum[] features = { FeatureEnum.WM1, FeatureEnum.HM1, FeatureEnum.WM2, FeatureEnum.HM2,   
@@ -44,7 +45,7 @@ public class REUtils {
 			FeatureEnum.MB, FeatureEnum.WB, FeatureEnum.M1gtM2, FeatureEnum.M1ltM2, FeatureEnum.ETM1gtM2, FeatureEnum.ETM1ltM2,
 			FeatureEnum.HMM1gtM2, FeatureEnum.HMM1ltM2,
 			FeatureEnum.CPHBNULL, FeatureEnum.CPHBFL, FeatureEnum.CPHBF, FeatureEnum.CPHBL, FeatureEnum.CPHBO,
-//			FeatureEnum.CPHBM1F, FeatureEnum.CPHBM1L, FeatureEnum.CPHAM2F, FeatureEnum.CPHAM2L
+			FeatureEnum.CPHBM1F, FeatureEnum.CPHBM1L, FeatureEnum.CPHAM2F, FeatureEnum.CPHAM2L, FeatureEnum.CPP, FeatureEnum.CPPH
 	};
 	
 	// NER features
@@ -54,7 +55,7 @@ public class REUtils {
 			FeatureEnum.ET12, 
 			FeatureEnum.MB, FeatureEnum.WB, FeatureEnum.M1gtM2, FeatureEnum.M1ltM2, FeatureEnum.ETM1gtM2, FeatureEnum.ETM1ltM2,
 			FeatureEnum.HMM1gtM2, FeatureEnum.HMM1ltM2,
-			FeatureEnum.CPHBNULL, FeatureEnum.CPHBFL, FeatureEnum.CPHBF, FeatureEnum.CPHBL, FeatureEnum.CPHBO,
+			FeatureEnum.CPHBNULL, FeatureEnum.CPHBFL, FeatureEnum.CPHBF, FeatureEnum.CPHBL, FeatureEnum.CPHBO
 	};
 	
 	// word features
@@ -73,7 +74,8 @@ public class REUtils {
 	
 	// chunking features
 	public static FeatureEnum[] features_chunking = { FeatureEnum.CPHBNULL, FeatureEnum.CPHBFL, 
-			FeatureEnum.CPHBM1F, FeatureEnum.CPHBM1L, FeatureEnum.CPHAM2F, FeatureEnum.CPHAM2L };
+			FeatureEnum.CPHBM1F, FeatureEnum.CPHBM1L, FeatureEnum.CPHAM2F, FeatureEnum.CPHAM2L,
+			FeatureEnum.CPP, FeatureEnum.CPPH };
 	
 	// dependency features
 	public static FeatureEnum[] features_dependency = {};
@@ -87,7 +89,7 @@ public class REUtils {
 	// possible null-valued features
 	public static FeatureEnum[] null_features = { FeatureEnum.WBFL, FeatureEnum.WBF, FeatureEnum.WBL, FeatureEnum.WBO, 
 			FeatureEnum.BM1F, FeatureEnum.BM1L, FeatureEnum.AM2F, FeatureEnum.AM2L,
-			FeatureEnum.CPHBFL, FeatureEnum.CPHBF, FeatureEnum.CPHBL, FeatureEnum.CPHBO };
+			FeatureEnum.CPHBFL, FeatureEnum.CPHBF, FeatureEnum.CPHBL, FeatureEnum.CPHBO, FeatureEnum.CPP, FeatureEnum.CPPH };
 	
 	static HashMap<String,Integer> labelCounts;
 	static HashMap<ACEDocument, List<Mention>> mentions;
@@ -307,10 +309,29 @@ public class REUtils {
 		return constituents;
 	}
 	
-	private static List<Constituent> getChunksBefore(SpanLabelView chunk, Mention m) {
+	private static List<Constituent> getChunksBefore(TextAnnotation ta, SpanLabelView chunk, Mention m) {
 		int mes = m.extentStartId;   // mention extent start
+		int sID = mes-1;
+		List<Constituent> constituents = new ArrayList<Constituent>();
+		
+		while (constituents.size() < 2 || sID > 0) {
+			constituents = chunk.getConstituentsCoveringSpan(sID, mes);
+			sID--;
+		}
+		return constituents;
+	}
+	
+	private static List<Constituent> getChunksAfter(TextAnnotation ta, SpanLabelView chunk, Mention m) {
 		int mee = m.extentEndId;     // mention extent end
-		return null;
+		int eID = mee+1;
+		List<Constituent> constituents = new ArrayList<Constituent>();
+		
+		while (mee+1 < ta.size() && (constituents.size() < 2 || eID < ta.size())) {
+			constituents = chunk.getConstituentsCoveringSpan(mee+1, eID);
+			eID++;
+		}
+		
+		return constituents;
 	}
 	
 	/**
@@ -337,6 +358,7 @@ public class REUtils {
 		List<String> values = new ArrayList<String>();
 		SpanLabelView chunk = (SpanLabelView) ta.getView(ViewNames.SHALLOW_PARSE);
 		List<Constituent> constituents = null;
+		String path = "";
 		
 		switch (feature) {
 		case HM1:      // head word 1
@@ -479,7 +501,36 @@ public class REUtils {
 			return values;
 			
 		case CPHBM1F: // first phrase head before M1
+			constituents = getChunksBefore(ta, chunk, m1);
+			if (constituents.size() == 0) return Arrays.asList(Features.CPHBM1F+Features.NULL);
+			return Arrays.asList(Features.CPHBM1F+constituents.get(constituents.size()-1).toString());
 			
+		case CPHBM1L: // second phrase head before M1
+			constituents = getChunksBefore(ta, chunk, m1);
+			if (constituents.size() < 2) return Arrays.asList(Features.CPHBM1L+Features.NULL);
+			return Arrays.asList(Features.CPHBM1L+constituents.get(constituents.size()-2).toString());
+			
+		case CPHAM2F: // first phrase head after M2
+			constituents = getChunksAfter(ta, chunk, m2);
+			if (constituents.size() == 0) return Arrays.asList(Features.CPHAM2F+Features.NULL);
+			return Arrays.asList(Features.CPHAM2F+constituents.get(0).toString());
+			
+		case CPHAM2L: // second phrase head after M2
+			constituents = getChunksAfter(ta, chunk, m2);
+			if (constituents.size() < 2) return Arrays.asList(Features.CPHAM2L+Features.NULL);
+			return Arrays.asList(Features.CPHAM2L+constituents.get(1).toString());
+			
+		case CPP:     // path of phrase labels connecting the two mentions
+			constituents = getChunksBetween(chunk, m1, m2);
+			if (constituents.isEmpty()) return Arrays.asList(Features.CPP+Features.NULL);
+			for (Constituent c : constituents) path += c.getLabel()+" ";
+			return Arrays.asList(Features.CPP+path);
+			
+		case CPPH:    // path of phrase labels augmented with head words, if at most two phrases in between
+			constituents = getChunksBetween(chunk, m1, m2);
+			if (constituents.isEmpty() || constituents.size() > 2) return Arrays.asList(Features.CPPH+Features.NULL);
+			for (Constituent c : constituents) path += c.getLabel()+" "+c.toString()+" ";
+			return Arrays.asList(Features.CPPH+path);
 			
 		default:       // unimplemented
 			System.err.println("Unimplemented feature id:"+feature.name());

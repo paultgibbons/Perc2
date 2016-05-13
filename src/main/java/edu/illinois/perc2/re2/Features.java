@@ -21,10 +21,10 @@ public class Features {
 	
 	public static final String ML12   = "ml12:";   // combination of entity levels (NAME, NOMIAL, and PRONOUN)
 	
-	public static final String MB     = "mb:";           // number of mentions in between
-	public static final String WB	  = "wb:";	         // number of words in between
-	public static final String M1gtM2 = "m1>m2:";        // M2 is included in M1
-	public static final String M1ltM2 = "m1<m2:";        // M1 is included in M2
+	public static final String MB       = "mb:";         // number of mentions in between
+	public static final String WB	    = "wb:";	     // number of words in between
+	public static final String M1gtM2   = "m1>m2:";      // M2 is included in M1
+	public static final String M1ltM2   = "m1<m2:";      // M1 is included in M2
 	public static final String ETM1gtM2 = "et12+m1>m2:"; // ET12 + M1 > M2
 	public static final String ETM1ltM2 = "et12+m1<m2:"; // ET12 + M1 < M2
 	public static final String HMM1gtM2 = "hm12+m1>m2:"; // HM12 + M1 > M2
@@ -39,6 +39,8 @@ public class Features {
 	public static final String CPHBM1L  = "cphbm1l:";  // second phrase head before M1
 	public static final String CPHAM2F  = "cpham2f:";  // first phrase head after M2
 	public static final String CPHAM2L  = "cpham2l:";  // second phrase head after M2
+	public static final String CPP      = "cpp:";	   // path of phrase labels connecting the two mentions
+	public static final String CPPH     = "cpph:";     // path of phrase labels augmented with head words, if at most two phrases in between
 	
 	public static final String REL	  = "rel:";	   // relation (label)
 	
@@ -53,7 +55,7 @@ public class Features {
 	public enum FeatureEnum {
 		WM1, HM1, WM2, HM2, HM12, WBNULL, WBFL, WBF, WBL, WBO, BM1F, BM1L, AM2F, AM2L, ET12, ML12, 
 		MB, WB, M1gtM2, M1ltM2, ETM1gtM2, ETM1ltM2, HMM1gtM2, HMM1ltM2, 
-		CPHBNULL, CPHBFL, CPHBF, CPHBL, CPHBO, CPHBM1F, CPHBM1L, CPHAM2F, CPHAM2L, REL
+		CPHBNULL, CPHBFL, CPHBF, CPHBL, CPHBO, CPHBM1F, CPHBM1L, CPHAM2F, CPHAM2L, CPP, CPPH, REL
 	}
 	
 	// enum of set of features for switch statement convenience
@@ -134,6 +136,10 @@ public class Features {
 			return CPHAM2F;
 		case CPHAM2L:
 			return CPHAM2L;
+		case CPP:
+			return CPP;
+		case CPPH:
+			return CPPH;
 		case REL:
 			return REL;
 		default:
