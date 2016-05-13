@@ -24,6 +24,7 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
@@ -42,6 +43,8 @@ public class MultiClassIOManager {
 	private static final String TRAINING="data/all/training_files.txt"; // file of training filenames
     
     public static List<ACEDocument> train;				// training documents
+    public static List<ACEDocument> train_binary;
+    public static List<ACEDocument> train_multiclass;
     public static List<ACEDocument> test_gold;			// gold test documents
     public static List<ACEDocument> test_ner;			// ner test documents
     public static List<String> 		training_filenames; // filenames of training documents (from Piazza)
@@ -62,6 +65,33 @@ public class MultiClassIOManager {
     public static List<ACEDocument> getGoldTestDocuments()	{ return test_gold; }
     public static List<ACEDocument> getNERTestDocuments()   { return test_ner;  }
     
+    public static void initializeSplitTrainingDocuments() {
+    	train_binary     = new ArrayList<ACEDocument>();
+    	train_multiclass = new ArrayList<ACEDocument>();
+    	
+    	int total_docs      = train.size();
+    	int binary_docs     = total_docs / 2;
+    	int multiclass_docs = total_docs - binary_docs;
+    	
+    	for (ACEDocument doc : train) {
+    		boolean added = false;
+    		
+    		while (!added) {
+    			if (Math.random() < 0.5 && train_binary.size() < binary_docs) {
+    				train_binary.add(doc);
+    				added = true;
+    			}
+    			else if (train_multiclass.size() < multiclass_docs) {
+    				train_multiclass.add(doc);
+    				added = true;
+    			}
+    		}
+    	}
+    }
+    
+    public static List<ACEDocument> getBinaryTrainingDocuments() { return train_binary; }
+    public static List<ACEDocument> getMulticlassTrainingDocuments() { return train_multiclass; }
+    
     /**
      * Reads a corpus using the BASE_DIR directory path and TRAINING file list specified in MultiClassIOManager.
      * Initializes training and test document lists.
@@ -69,7 +99,9 @@ public class MultiClassIOManager {
      * @param ner Whether or not to use NER-predicted mentions
      */
 	public static void readCorpus(AceFileProcessor afp, boolean ner) {
-		train     = new ArrayList<ACEDocument>(); // initialize list of training documents
+		train            = new ArrayList<ACEDocument>(); // initialize list of training documents
+		train_binary     = new ArrayList<ACEDocument>();
+		train_multiclass = new ArrayList<ACEDocument>();
 		test_gold = new ArrayList<ACEDocument>(); // initialize list of test documents
 		test_ner  = new ArrayList<ACEDocument>();
 		
@@ -162,7 +194,7 @@ public class MultiClassIOManager {
 	 * @throws Exception If file fname cannot be read
 	 */
 	public static float[][] getCostMatrix(Lexiconer lm, String fname) throws Exception{
-		System.out.println("Reading cost matrix: "+fname);
+		System.out.println("["+(new Date(System.currentTimeMillis()))+"] Reading cost matrix: "+fname+" ...");
 		int numLabels = lm.getNumOfLabels();
 		float[][] res = new float[numLabels][numLabels];
 		
@@ -230,14 +262,38 @@ public class MultiClassIOManager {
 	 * @param docs List of documents to be read
 	 * @param lm Lexiconer object to be used
 	 * @param annotator Initialized annotator service to be used
-	 * @return Initialized SLProblem with training instances initialized from the input documents
+	 * @param ner_data Whether or not we are using NER test data
+	 * @param ner_features Whether or not we are computing only NER-compatible features
+	 * @param binary_labels Whether or not we are using binary yes/no labels
+	 * @return Initialized SLProblem with instances initialized from the input documents
 	 */
-	public static SLProblem readStructuredData(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, boolean ner_data, boolean ner_features) {
+	public static SLProblem readStructuredData(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, boolean ner_data, boolean ner_features, boolean binary_labels) {
 		SLProblem sp = new SLProblem();
         
 		REUtils.initializeSortedMentionList(docs, annotator);
-        if (lm.isAllowNewFeatures()) REUtils.addFeaturesToLexiconer(docs, lm, annotator, ner_features);
-        REUtils.createInstances(docs, lm, annotator, sp, ner_data, ner_features);
+        if (lm.isAllowNewFeatures()) REUtils.addFeaturesToLexiconer(docs, lm, annotator, ner_features, binary_labels);
+        REUtils.createInstances(docs, lm, annotator, sp, ner_data, ner_features, binary_labels);
+		
+		return sp;
+	}
+
+	/**
+	 * Reads structured data from a given list of mention pairs. Adds features to a given Lexiconer (if training)
+	 * and creates instances added to the SLProblem (using feature vector representation).
+	 * @param docs List of documents to be read
+	 * @param lm Lexiconer object to be used
+	 * @param annotator Initialized annotator service to be used
+	 * @param ner_data Whether or not we are using NER test data
+	 * @param ner_features Whether or not we are computing only NER-compatible features
+	 * @param binary_labels Whether or not we are using binary yes/no labels
+	 * @return Initialized SLProblem with instances initialized from the input documents
+	 */
+	public static SLProblem initializeFromMentionPairs(List<MentionPair> mention_pairs, Lexiconer lm, AnnotatorService annotator, boolean ner_data, boolean ner_features) {
+		SLProblem sp = new SLProblem();
+        
+		REUtils.initializeSortedMentionListFromMentionPairs(mention_pairs, annotator);
+        if (lm.isAllowNewFeatures()) REUtils.addFeaturesToLexiconerFromMentionPairs(mention_pairs, lm, annotator, ner_features);
+        REUtils.createInstancesFromMentionPairs(mention_pairs, lm, annotator, sp, ner_data, ner_features);
 		
 		return sp;
 	}

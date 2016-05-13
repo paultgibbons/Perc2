@@ -3,6 +3,7 @@ package edu.illinois.perc2.re2;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -84,14 +85,15 @@ public class REUtils {
 	public static FeatureEnum[] bow_features = { FeatureEnum.WM1, FeatureEnum.WM2, FeatureEnum.WBO, FeatureEnum.CPHBO };
 	
 	// possible null-valued features
-	public static FeatureEnum[] null_features = { FeatureEnum.BM1F, FeatureEnum.BM1L, FeatureEnum.AM2F, FeatureEnum.AM2L,
-			FeatureEnum.WBFL, FeatureEnum.WBF, FeatureEnum.WBL, FeatureEnum.WBO, 
+	public static FeatureEnum[] null_features = { FeatureEnum.WBFL, FeatureEnum.WBF, FeatureEnum.WBL, FeatureEnum.WBO, 
+			FeatureEnum.BM1F, FeatureEnum.BM1L, FeatureEnum.AM2F, FeatureEnum.AM2L,
 			FeatureEnum.CPHBFL, FeatureEnum.CPHBF, FeatureEnum.CPHBL, FeatureEnum.CPHBO };
 	
-	static HashMap<String,Integer> labelCounts = new HashMap<String,Integer>();
+	static HashMap<String,Integer> labelCounts;
 	static HashMap<ACEDocument, List<Mention>> mentions;
 	
 	static int unmapped_mentions = 0; // count of mentions unable to be mapped to gold mentions
+	
 	
 	/**
 	 * Gets the list of FeatureEnums as specified by the set types given as input arguments.
@@ -136,97 +138,6 @@ public class REUtils {
 		}
 		
 		return fts;
-	}
-	
-	/**
-	 * Initializes an annotator service.
-	 * @return initialized annotator service
-	 */
-	public static AnnotatorService initializeAnnotator() {
-		Properties props = new Properties();
-        props.setProperty(PipelineConfigurator.USE_POS.key, Configurator.TRUE);
-        props.setProperty(PipelineConfigurator.USE_LEMMA.key, Configurator.TRUE);
-        props.setProperty(PipelineConfigurator.USE_SHALLOW_PARSE.key, Configurator.TRUE);
-        props.setProperty(PipelineConfigurator.USE_NER_CONLL.key, Configurator.FALSE);
-        props.setProperty(PipelineConfigurator.USE_NER_ONTONOTES.key, Configurator.FALSE);
-        props.setProperty(PipelineConfigurator.USE_STANFORD_PARSE.key, Configurator.TRUE);
-        props.setProperty(PipelineConfigurator.USE_STANFORD_DEP.key, Configurator.FALSE);
-        props.setProperty(PipelineConfigurator.USE_SRL_VERB.key, Configurator.FALSE);
-        props.setProperty(PipelineConfigurator.USE_SRL_NOM.key, Configurator.FALSE);
-        props.setProperty(PipelineConfigurator.STFRD_MAX_SENTENCE_LENGTH.key, "10000");
-        props.setProperty(PipelineConfigurator.STFRD_TIME_PER_SENTENCE.key, "100000000");
-
-        ResourceManager  rm = new ResourceManager(props);
-        AnnotatorService annotator = null;
-        try {
-            annotator = IllinoisPipelineFactory.buildPipeline(rm);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        return annotator;
-	}
-	
-	/**
-	 * Helper method to compute precision of a specified label.
-	 * @param confusion_mtx Initialized confusion matrix
-	 * @param label Label for which precision is to be computed
-	 * @param lm Lexiconer managing label lexicon
-	 * @return Precision of label given the confusion matrix
-	 */
-	public static double computePrecision(HashMap<String, HashMap<String, Integer>> confusion_mtx, String label, Lexiconer lm) {
-		double mii = confusion_mtx.get(label).get(label);
-		double mji = 0.0;
-		
-		for (int j = 0; j < lm.getNumOfLabels(); j++) mji += confusion_mtx.get(lm.getLabelString(j)).get(label);
-		
-		return mii / mji;
-	}
-
-	/**
-	 * Helper method to compute precision of a specified label given values for true positives and false positives.
-	 * @param tp Number of true positives
-	 * @param fn Number of false positives
-	 * @return Precision of label given true positives and false positives
-	 */
-	public static double computePrecision(int tp, int fp) {
-		return tp / ((double) tp + fp);
-	}
-	
-	/**
-	 * Helper method to compute recall of a specified label given a confusion matrix.
-	 * @param confusion_mtx Initialized confusion matrix
-	 * @param label Label for which precision is to be computed
-	 * @param lm Lexiconer managing label lexicon
-	 * @return Recall of label given the confusion matrix
-	 */
-	public static double computeRecall(HashMap<String, HashMap<String, Integer>> confusion_mtx, String label, Lexiconer lm) {
-		double mii = confusion_mtx.get(label).get(label);
-		double mij = 0.0;
-		
-		for (int j = 0; j < lm.getNumOfLabels(); j++) mij += confusion_mtx.get(label).get(lm.getLabelString(j));
-		
-		return mii / mij;
-	}
-	
-	/**
-	 * Helper method to compute recall of a specified label given values for true positives and false negatives.
-	 * @param tp Number of true positives
-	 * @param fn Number of false negatives
-	 * @return Recall of label given true positives and false negatives
-	 */
-	public static double computeRecall(int tp, int fn) {
-		return tp / ((double) tp + fn);
-	}
-	
-	/**
-	 * Helper method to compute F1 score given precision and recall.
-	 * @param precision Precision
-	 * @param recall Recall
-	 * @return F1 score
-	 */
-	public static double computeF1(double precision, double recall) {
-		return 2 * (precision * recall) / (precision + recall);
 	}
 
 	/**
@@ -276,7 +187,7 @@ public class REUtils {
 			}
 			
 		}
-		return "NONE";
+		return Features.NONE;
 	}
 	
 	/**
@@ -300,7 +211,7 @@ public class REUtils {
 		else { // map failure
 			if (gold_m1 == null) unmapped_mentions++;
 			if (gold_m2 == null) unmapped_mentions++;
-			return Features.REL+"NONE";
+			return Features.REL+Features.NONE;
 		}
 	}
 	
@@ -442,6 +353,15 @@ public class REUtils {
 			return values;
 			
 		case WM2:      // bag-of-words 2
+			try {
+				ta.getTokensInSpan(m2es, m2ee);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("m2es:"+m2es);
+				System.err.println("m2ee:"+m2ee);
+				System.err.println(ta.getToken(m2es));
+				System.err.println(ta.getToken(m2ee));
+			}
 			for (String s : ta.getTokensInSpan(m2es,m2ee)) values.add(Features.WM2+s);
 			return values;
 		
@@ -641,6 +561,7 @@ public class REUtils {
 	 * @param annotator Initialized annotator service
 	 */
 	public static void initializeSortedMentionList(List<ACEDocument> docs, AnnotatorService annotator) {
+		System.out.println("["+(new Date(System.currentTimeMillis()))+"] Initializing sorted mention list ...");
 		mentions = new HashMap<ACEDocument, List<Mention>>();
 		
 		for(ACEDocument doc : docs) {
@@ -652,29 +573,67 @@ public class REUtils {
 				
 				List<?> entities  = doc.aceAnnotation.entityList;	  // entities
 
-				// for each pair of entities
+				// for each entity
 				for (int i = 0; i < entities.size(); i++) {
-					for (int j = 0; j < entities.size(); j++) {
-						// entities
-						ACEEntity e1 = ((ACEEntity) entities.get(i)); // first entity
-						ACEEntity e2 = ((ACEEntity) entities.get(j)); // second entity
 
-						List<ACEEntityMention> e1m = e1.entityMentionList; // mention list of first entity
-						List<ACEEntityMention> e2m = e2.entityMentionList; // mention list of second entity
-						
-						// for each combination of mention pairs
-						for (ACEEntityMention am1 : e1m) {
-							for (ACEEntityMention am2 : e2m) {
-								
-								Mention m1 = new Mention(doc, e1, am1, ta); // first mention
-								Mention m2 = new Mention(doc, e2, am2, ta); // second mention
-								
-//								System.out.println(MultiClassIOManager.ner_filenames.get(doc));
-								
-								if (!mentions.get(doc).contains(m1)) mentions.get(doc).add(m1);
-								if (!mentions.get(doc).contains(m2)) mentions.get(doc).add(m2);
-							}
-						}
+					// entities
+					ACEEntity e = ((ACEEntity) entities.get(i));     // entity
+					List<ACEEntityMention> em = e.entityMentionList; // entity mention list
+
+					// for each mention
+					for (ACEEntityMention am : em) {
+
+						Mention m = new Mention(doc, e, am, ta); // mention
+
+						// System.out.println(MultiClassIOManager.ner_filenames.get(doc));
+
+						if (!mentions.get(doc).contains(m)) mentions.get(doc).add(m);
+					}
+				}
+				
+				Collections.sort(mentions.get(doc));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	/**
+	 * Initializes a per-document sorted mention list, sorted by start index of the mention's extent.
+	 * @param docs List of mention pairs to create sorted mention lists for
+	 * @param annotator Initialized annotator service
+	 */
+	public static void initializeSortedMentionListFromMentionPairs(List<MentionPair> mention_pairs, AnnotatorService annotator) {
+		System.out.println("["+(new Date(System.currentTimeMillis()))+"] Initializing sorted mention list from mention pairs ...");
+		mentions = new HashMap<ACEDocument, List<Mention>>();
+		
+		for (MentionPair mention_pair : mention_pairs) {
+			try {
+				ACEDocument doc = mention_pair.document;
+				
+				if (doc == null) continue;
+				
+				TextAnnotation ta = annotator.createBasicTextAnnotation("","",doc.contentRemovingTags); // create the TextAnnotation
+//				System.out.println(doc.contentRemovingTags+"\n\n");
+				if (!mentions.containsKey(doc)) mentions.put(doc, new ArrayList<Mention>());		
+				
+				List<?> entities  = doc.aceAnnotation.entityList;	  // entities
+
+				// for each entity
+				for (int i = 0; i < entities.size(); i++) {
+
+					// entities
+					ACEEntity e = ((ACEEntity) entities.get(i));     // entity
+					List<ACEEntityMention> em = e.entityMentionList; // entity mention list
+
+					// for each mention
+					for (ACEEntityMention am : em) {
+
+						Mention m = new Mention(doc, e, am, ta); // mention
+
+						// System.out.println(MultiClassIOManager.ner_filenames.get(doc));
+
+						if (!mentions.get(doc).contains(m)) mentions.get(doc).add(m);
 					}
 				}
 				
@@ -692,14 +651,17 @@ public class REUtils {
 	 * @param lm Lexiconer to be used
 	 * @param annotator Initialized annotator service
 	 */
-	public static void addFeaturesToLexiconer(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, boolean ner_features) {
+	public static void addFeaturesToLexiconer(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, boolean ner_features, boolean binary_labels) {
+		System.out.println("["+(new Date(System.currentTimeMillis()))+"] Adding features to lexicon ...");
+		labelCounts = new HashMap<String,Integer>();
+		
 		if (lm.isAllowNewFeatures()) {
 			List<FeatureEnum>  fts = null;
 			if (!ner_features) fts = getFeatureSet(feature_sets);
 			else               fts = Arrays.asList(features_ner);
 			
-			System.out.println("Features to be used: ");
-			for (FeatureEnum feature : fts)	System.out.println("\t"+feature.name());
+			System.out.print("Features to be used: \n\t");
+			for (FeatureEnum feature : fts)	System.out.print(feature.name()+"  ");
 			System.out.println();
 			
 			// add UNK tokens for all features
@@ -735,9 +697,6 @@ public class REUtils {
 									Mention m1 = new Mention(doc, e1, am1, ta); // first mention
 									Mention m2 = new Mention(doc, e2, am2, ta); // second mention
 									
-									if (!mentions.get(doc).contains(m1)) mentions.get(doc).add(m1);
-									if (!mentions.get(doc).contains(m2)) mentions.get(doc).add(m2);
-									
 									// add features and label if mention pair occurs within the same sentence(s)
 									if (mentionsInSameSentence(ta,m1,m2)) {										
 										for (FeatureEnum feature : fts) {
@@ -749,13 +708,24 @@ public class REUtils {
 
 										// relation label
 										String relation = REUtils.getRelationType(m1, m2, relations);
-										lm.addLabel(Features.REL+relation);
+										if (!binary_labels) lm.addLabel(Features.REL+relation);
+										else {
+											if (!relation.equals(Features.NONE)) lm.addLabel(Features.REL+Features.HASREL);
+											else lm.addLabel(Features.REL+Features.NONE);
+										}
 										
-										if (!relation.equals("NONE")) nonNONERel++;
+										if (!relation.equals(Features.NONE)) nonNONERel++;
 										totalRel++;
 										
-										if (!labelCounts.containsKey(relation)) labelCounts.put(relation, 0);
-										labelCounts.put(relation,labelCounts.get(relation)+1);
+										if (!binary_labels) {
+											if (!labelCounts.containsKey(relation)) labelCounts.put(relation, 0);
+											labelCounts.put(relation,labelCounts.get(relation)+1);
+										}
+										else {
+											String r = (!relation.equals(Features.NONE) ? Features.HASREL : Features.NONE);
+											if (!labelCounts.containsKey(r)) labelCounts.put(r, 0);
+											labelCounts.put(r,labelCounts.get(r)+1);
+										}
 									}
 								}
 							}
@@ -778,6 +748,79 @@ public class REUtils {
 	}
 
 	/**
+	 * Traverses through given list of (training) mention pairs and adds all instances of feature label+values into the
+	 * given Lexiconer.
+	 * @param docs Training documents
+	 * @param lm Lexiconer to be used
+	 * @param annotator Initialized annotator service
+	 */
+	public static void addFeaturesToLexiconerFromMentionPairs(List<MentionPair> mention_pairs, Lexiconer lm, AnnotatorService annotator, boolean ner_features) {
+		System.out.println("["+(new Date(System.currentTimeMillis()))+"] Adding features to lexicon from mention pairs ...");
+		labelCounts = new HashMap<String,Integer>();
+		
+		if (lm.isAllowNewFeatures()) {
+			List<FeatureEnum>  fts = null;
+			if (!ner_features) fts = getFeatureSet(feature_sets);
+			else               fts = Arrays.asList(features_ner);
+			
+			System.out.print("Features to be used: \n\t");
+			for (FeatureEnum feature : fts)	System.out.print(feature.name()+"  ");
+			System.out.println();
+			
+			// add UNK tokens for all features
+			for (FeatureEnum feature : fts) lm.addFeature(getUNKFeature(feature));
+			for (FeatureEnum feature : null_features) lm.addFeature(getNULLFeature(feature));
+			
+			int totalRel = 0, nonNONERel = 0;
+			
+			for (MentionPair mention_pair : mention_pairs) {
+				try {
+					ACEDocument doc = mention_pair.document;
+					
+					if (doc == null) continue;
+					TextAnnotation ta = annotator.createBasicTextAnnotation("","",doc.contentRemovingTags); // create the TextAnnotation
+					
+					annotator.addView(ta, ViewNames.SHALLOW_PARSE);
+					
+					List<?> relations = doc.aceAnnotation.relationList;	  // relations
+										
+					Mention m1 = mention_pair.m1; // first mention
+					Mention m2 = mention_pair.m2; // second mention
+
+					for (FeatureEnum feature : fts) {
+						for (String s : computeFeature(ta,m1,m2,feature)) {
+							lm.addFeature(s);
+//							System.out.println("Added feature "+s);
+						}
+					}
+
+					// relation label
+					String relation = REUtils.getRelationType(m1, m2, relations);
+					lm.addLabel(Features.REL+relation);
+										
+					if (!relation.equals(Features.NONE)) nonNONERel++;
+					totalRel++;
+
+					if (!labelCounts.containsKey(relation)) labelCounts.put(relation, 0);
+					labelCounts.put(relation,labelCounts.get(relation)+1);
+					
+				} catch (Exception e) {
+					e.printStackTrace();
+				}				
+			}
+
+			
+			System.out.println(nonNONERel+" non-NONE relations of "+totalRel+" total relations.");
+			System.out.println("Relation counts: ");
+			for (String k : labelCounts.keySet()) {
+				System.out.println("\t"+k+": "+labelCounts.get(k)+"\t"+labelCounts.get(k)/((double) totalRel)+"\t"+1/(labelCounts.get(k)/((double) totalRel)));
+			}
+			
+			System.out.println();
+		}
+	}
+
+	/**
 	 * Traverses through given list of documents and initializes instances of feature vectors with associated output label
 	 * (using indices provided by the given Lexiconer), adding them to the given SLProblem.
 	 * @param docs Documents to be read
@@ -785,7 +828,8 @@ public class REUtils {
 	 * @param annotator Initialized annotator service to be used
 	 * @param sp SLProblem to add instances to
 	 */
-	public static void createInstances(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, SLProblem sp, boolean ner_data, boolean ner_features) {
+	public static void createInstances(List<ACEDocument> docs, Lexiconer lm, AnnotatorService annotator, SLProblem sp, boolean ner_data, boolean ner_features, boolean binary_labels) {
+		System.out.println("["+(new Date(System.currentTimeMillis()))+"] Creating instances ...");
 		List<FeatureEnum>  fts = null;
 		if (!ner_features) fts = getFeatureSet(feature_sets);
 		else      		   fts = Arrays.asList(features_ner);
@@ -837,7 +881,14 @@ public class REUtils {
 
 									// create label
 									MultiClassLabel    ml = null;
-									if (!ner_data) ml = new MultiClassLabel(lm.getLabelId(Features.REL+REUtils.getRelationType(m1, m2, relations)));
+									if (!ner_data) {
+										String relation = REUtils.getRelationType(m1, m2, relations);
+										if (!binary_labels) ml = new MultiClassLabel(lm.getLabelId(Features.REL+relation));
+										else {
+											if (!relation.equals(Features.NONE)) ml = new MultiClassLabel(lm.getLabelId(Features.REL+Features.HASREL));
+											else ml = new MultiClassLabel(lm.getLabelId(Features.REL+Features.NONE));
+										}
+									}
 //									
 									// add instance-output pair to SLProblem
 									sp.addExample(mi, ml);
@@ -850,5 +901,113 @@ public class REUtils {
 				e.printStackTrace();
 			}
 		}
+	}
+	
+	/**
+	 * Traverses through given list of mention pairs and initializes instances of feature vectors with associated output label
+	 * (using indices provided by the given Lexiconer), adding them to the given SLProblem.
+	 * @param docs Documents to be read
+	 * @param lm Initialized Lexiconer to be used
+	 * @param annotator Initialized annotator service to be used
+	 * @param sp SLProblem to add instances to
+	 */
+	public static void createInstancesFromMentionPairs(List<MentionPair> mention_pairs, Lexiconer lm, AnnotatorService annotator, SLProblem sp, boolean ner_data, boolean ner_features) {
+		System.out.println("["+(new Date(System.currentTimeMillis()))+"] Creating instances from mention pairs ...");
+		List<FeatureEnum>  fts = null;
+		if (!ner_features) fts = getFeatureSet(feature_sets);
+		else      		   fts = Arrays.asList(features_ner);
+		
+		for (MentionPair mention_pair : mention_pairs) {
+			try {
+				ACEDocument doc = mention_pair.document;
+				
+				if (doc == null) continue;
+				TextAnnotation ta = annotator.createBasicTextAnnotation("","",doc.contentRemovingTags); // create the TextAnnotation
+
+				annotator.addView(ta, ViewNames.SHALLOW_PARSE);
+
+				List<?> relations = null;
+				if (!ner_data) relations = doc.aceAnnotation.relationList; // relations
+
+				Mention m1 = mention_pair.m1; // first mention
+				Mention m2 = mention_pair.m2; // second mention
+
+				List<Integer> idxList = new ArrayList<Integer>();
+				List<Double>  valList = new ArrayList<Double>();
+
+				// add feature values to sparse feature vector representation
+				for (FeatureEnum feature : fts) addFeatureToSparseVector(ta, lm, idxList, valList, feature, m1, m2);
+
+				// add bias term
+				idxList.add(lm.getNumOfFeature()+1);
+				valList.add(1.0);
+
+				// create instance
+				IFeatureVector     fv = new FeatureVectorBuffer(idxList, valList).toFeatureVector();
+				MultiClassInstance mi = new MultiClassInstance(lm.getNumOfFeature()+1, lm.getNumOfLabels(), fv, m1, m2, doc); 
+
+				// create label
+				MultiClassLabel    ml = null;
+				if (!ner_data) {
+					String relation = REUtils.getRelationType(m1, m2, relations);
+					ml = new MultiClassLabel(lm.getLabelId(Features.REL+relation));
+				}
+
+				// add instance-output pair to SLProblem
+				sp.addExample(mi, ml);
+
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public static List<MentionPair> getMentionPairsWithRelations(List<ACEDocument> docs, AnnotatorService annotator) throws Exception {
+		System.out.println("["+(new Date(System.currentTimeMillis()))+"] Getting gold mention pairs with relations ...");
+		List<MentionPair> candidates = new ArrayList<MentionPair>();
+		
+		for(ACEDocument doc : docs) {
+			try{
+				if (doc == null) continue;
+				TextAnnotation ta = annotator.createBasicTextAnnotation("","",doc.contentRemovingTags); // create the TextAnnotation
+				
+				annotator.addView(ta, ViewNames.SHALLOW_PARSE);
+						
+				List<?> entities  = doc.aceAnnotation.entityList;	  // entities
+				List<?> relations = doc.aceAnnotation.relationList;	  // relations
+
+				// for each pair of entities
+				for (int i = 0; i < entities.size(); i++) {
+					for (int j = 0; j < entities.size(); j++) {
+						// entities
+						ACEEntity e1 = ((ACEEntity) entities.get(i)); // first entity
+						ACEEntity e2 = ((ACEEntity) entities.get(j)); // second entity
+
+						List<ACEEntityMention> e1m = e1.entityMentionList; // mention list of first entity
+						List<ACEEntityMention> e2m = e2.entityMentionList; // mention list of second entity
+						
+						// for each combination of mention pairs
+						for (ACEEntityMention am1 : e1m) {
+							for (ACEEntityMention am2 : e2m) {
+								
+								Mention m1 = new Mention(doc, e1, am1, ta); // first mention
+								Mention m2 = new Mention(doc, e2, am2, ta); // second mention
+								
+								// add features and label if mention pair occurs within the same sentence(s)
+								if (mentionsInSameSentence(ta,m1,m2)) {										
+									// relation label
+									String relation = REUtils.getRelationType(m1, m2, relations);
+									if (!relation.contains(Features.NONE)) candidates.add(new MentionPair(doc, m1, m2, Features.REL+relation));
+								}
+							}
+						}
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		return candidates;
 	}
 }

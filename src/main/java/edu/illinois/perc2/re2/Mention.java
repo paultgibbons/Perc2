@@ -39,6 +39,16 @@ public class Mention implements Comparable {
 		headEndId     = ta.getTokenIdFromCharacterOffset(m.headEnd)+1;
 		extentStartId = ta.getTokenIdFromCharacterOffset(m.extentStart);
 		extentEndId   = ta.getTokenIdFromCharacterOffset(m.extentEnd)+1;
+		
+		if (extentStartId == -1) {
+			System.err.println("Character offset producing -1: "+m.extentStart);
+			String text = ta.getText();
+			for (int i = m.extentStart-5; i < m.extentStart+5; i++) {
+				if (i != m.extentStart) System.err.print(text.charAt(i));
+				else System.err.print("<"+text.charAt(i)+">");
+			}
+			System.err.println();
+		}
 	}
 
 	@Override

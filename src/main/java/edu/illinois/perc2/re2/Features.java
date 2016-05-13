@@ -46,6 +46,8 @@ public class Features {
 	public static final String NULL   = "NULL";	   // NULL token
 	public static final String TRUE   = "TRUE";    // TRUE
 	public static final String FALSE  = "FALSE";   // FALSE
+	public static final String HASREL = "REL";     // relation (value)
+	public static final String NONE   = "NONE";    // NONE (value)
 	
 	// enum of features for switch statement convenience
 	public enum FeatureEnum {
